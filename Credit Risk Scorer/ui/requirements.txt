@@ -1,0 +1,5 @@
+streamlit==1.40.0
+requests==2.31.0
+shap==0.51.0
+numpy==2.4.4
+matplotlib==3.9.0
