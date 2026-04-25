@@ -13,7 +13,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 COLLECTION_NAME = "documents"
-CHAT_MODEL = "llama-3.3-70b-versatile"
+CHAT_MODEL = "qwen/qwen3-32b"
+SUMMARY_MODEL = "llama-3.1-8b-instant"
 TOP_K = 5
 
 CHROMA_HOST = os.environ["CHROMA_HOST"]
@@ -26,6 +27,12 @@ embed_model = SentenceTransformer("all-MiniLM-L6-v2")
 SYSTEM_PROMPT = (
     "You are a helpful assistant. Answer the user's question using only "
     "the context provided. If the answer is not in the context, say you don't know."
+)
+
+REASONING_SUMMARY_PROMPT = (
+    "The text below is the internal reasoning a language model used to answer a question. "
+    "Rewrite it in 2-3 clear sentences that anyone can understand, without technical jargon. "
+    "Explain what information was used and why the model reached its conclusion."
 )
 
 
@@ -70,7 +77,37 @@ def build_prompt(question: str, chunks: list[str], sources: list[str]) -> str:
     return f"Context:\n{context_blocks}\n\nQuestion: {question}"
 
 
-def ask(collection, question: str) -> tuple[str, list[str]]:
+def parse_response(content: str) -> tuple[str, str]:
+    """Split a DeepSeek-R1 response into (thinking, answer)."""
+    if "<think>" in content and "</think>" in content:
+        thinking = content.split("<think>", 1)[1].split("</think>", 1)[0].strip()
+        answer = content.split("</think>", 1)[1].strip()
+        return thinking, answer
+    return "", content
+
+
+def summarize_thinking(thinking: str) -> str:
+    logger.info("Summarizing model reasoning (%d chars)", len(thinking))
+    response = requests.post(
+        GROQ_URL,
+        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+        json={
+            "model": SUMMARY_MODEL,
+            "messages": [
+                {"role": "system", "content": REASONING_SUMMARY_PROMPT},
+                {"role": "user", "content": thinking},
+            ],
+        },
+    )
+    if not response.ok:
+        logger.warning("Reasoning summarization failed: %s", response.status_code)
+        return ""
+    return response.json()["choices"][0]["message"]["content"]
+
+
+def ask(
+    collection, question: str, include_reasoning: bool = False
+) -> tuple[str, list[str], str, list[tuple[str, str]]]:
     chunks, sources = retrieve(collection, question)
     logger.info("Calling Groq (%s)", CHAT_MODEL)
     response = requests.post(
@@ -87,16 +124,20 @@ def ask(collection, question: str) -> tuple[str, list[str]]:
     if not response.ok:
         logger.error("Groq request failed: %s %s", response.status_code, response.reason)
         raise Exception(f"{response.status_code} {response.reason}: {response.json()}")
-    answer = response.json()["choices"][0]["message"]["content"]
+    content = response.json()["choices"][0]["message"]["content"]
+    raw_thinking, answer = parse_response(content)
+    reasoning = summarize_thinking(raw_thinking) if include_reasoning and raw_thinking else ""
     unique_sources = list(dict.fromkeys(sources))
     logger.info("Answer received — sources: %s", unique_sources)
-    return answer, unique_sources
+    return answer, unique_sources, reasoning, list(zip(chunks, sources))
 
 
 # ── UI ────────────────────────────────────────────────────────────────────────
 
 st.set_page_config(page_title="RAG Chat", page_icon="📄")
 st.title("📄 Document Q&A")
+
+show_reasoning = st.sidebar.toggle("Thought Train")
 
 collection = get_collection()
 
@@ -106,8 +147,14 @@ if "messages" not in st.session_state:
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
+        if show_reasoning and msg.get("reasoning"):
+            with st.expander("Thought Train"):
+                st.markdown(msg["reasoning"])
         if msg.get("sources"):
             st.caption("Sources: " + " · ".join(msg["sources"]))
+        for i, (chunk, source) in enumerate(msg.get("chunk_sources", []), 1):
+            with st.expander(f"Excerpt {i} — {source}"):
+                st.write(chunk)
 
 if question := st.chat_input("Ask a question about your documents…"):
     st.session_state.messages.append({"role": "user", "content": question})
@@ -117,15 +164,29 @@ if question := st.chat_input("Ask a question about your documents…"):
     with st.chat_message("assistant"):
         with st.spinner("Searching documents…"):
             try:
-                answer, sources = ask(collection, question)
+                answer, sources, reasoning, chunk_sources = ask(
+                    collection, question, include_reasoning=show_reasoning
+                )
             except Exception as e:
                 logger.exception("Failed to answer question: %.80s", question)
                 answer = f"Something went wrong: {e}"
                 sources = []
+                reasoning = ""
+                chunk_sources = []
         st.markdown(answer)
+        if show_reasoning and reasoning:
+            with st.expander("Thought Train"):
+                st.markdown(reasoning)
         if sources:
             st.caption("Sources: " + " · ".join(sources))
+        for i, (chunk, source) in enumerate(chunk_sources, 1):
+            with st.expander(f"Excerpt {i} — {source}"):
+                st.write(chunk)
 
-    st.session_state.messages.append(
-        {"role": "assistant", "content": answer, "sources": sources}
-    )
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": answer,
+        "sources": sources,
+        "reasoning": reasoning,
+        "chunk_sources": chunk_sources,
+    })
