@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import datetime
 
 import requests
 import chromadb
@@ -34,6 +35,110 @@ REASONING_SUMMARY_PROMPT = (
     "Rewrite it in 2-3 clear sentences that anyone can understand, without technical jargon. "
     "Explain what information was used and why the model reached its conclusion."
 )
+
+CSS = """
+<style>
+/* ── Layout ───────────────────────────────────────────────────────── */
+.main .block-container {
+    max-width: 820px;
+    padding-top: 1.5rem;
+    padding-bottom: 6rem;
+}
+
+/* ── Fade-in animation ────────────────────────────────────────────── */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+[data-testid="stChatMessage"] {
+    animation: fadeInUp 0.22s ease-out;
+    border-radius: 14px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+}
+
+/* ── User bubble ──────────────────────────────────────────────────── */
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {
+    background: #EEF2FF;
+    border-left: 3px solid #6366F1;
+    margin-left: 10%;
+}
+
+/* ── Assistant bubble ─────────────────────────────────────────────── */
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    margin-right: 10%;
+}
+
+/* ── Chat input ───────────────────────────────────────────────────── */
+[data-testid="stChatInput"] textarea {
+    border-radius: 24px !important;
+    border: 2px solid #E5E7EB !important;
+    padding: 12px 20px !important;
+    font-size: 0.95rem !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+    resize: none !important;
+}
+[data-testid="stChatInput"] textarea:focus {
+    border-color: #6366F1 !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+    outline: none !important;
+}
+
+/* ── Timestamps ───────────────────────────────────────────────────── */
+.msg-timestamp {
+    font-size: 0.7rem;
+    color: #9CA3AF;
+    display: block;
+    margin-top: 2px;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────── */
+[data-testid="stSidebar"] {
+    background: #F9FAFB;
+}
+
+/* ── Clear button ─────────────────────────────────────────────────── */
+[data-testid="stSidebar"] .stButton button {
+    border: 1.5px solid #E5E7EB;
+    background: white;
+    color: #374151;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+[data-testid="stSidebar"] .stButton button:hover {
+    border-color: #EF4444;
+    color: #EF4444;
+    background: #FEF2F2;
+}
+
+/* ── Mobile ───────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]),
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
+        margin-left: 0;
+        margin-right: 0;
+    }
+    .main .block-container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}
+</style>
+"""
+
+SCROLL_JS = """
+<script>
+(function() {
+    var msgs = window.parent.document.querySelectorAll('[data-testid="stChatMessage"]');
+    if (msgs.length) msgs[msgs.length - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+})();
+</script>
+"""
 
 
 @st.cache_resource
@@ -78,7 +183,7 @@ def build_prompt(question: str, chunks: list[str], sources: list[str]) -> str:
 
 
 def parse_response(content: str) -> tuple[str, str]:
-    """Split a DeepSeek-R1 response into (thinking, answer)."""
+    """Split a Qwen3 response into (thinking, answer)."""
     if "<think>" in content and "</think>" in content:
         thinking = content.split("<think>", 1)[1].split("</think>", 1)[0].strip()
         answer = content.split("</think>", 1)[1].strip()
@@ -132,21 +237,14 @@ def ask(
     return answer, unique_sources, reasoning, list(zip(chunks, sources))
 
 
-# ── UI ────────────────────────────────────────────────────────────────────────
-
-st.set_page_config(page_title="RAG Chat", page_icon="📄")
-st.title("📄 Document Q&A")
-
-show_reasoning = st.sidebar.toggle("Thought Train")
-
-collection = get_collection()
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-for msg in st.session_state.messages:
+def render_message(msg: dict, show_reasoning: bool) -> None:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
+        if msg.get("timestamp"):
+            st.markdown(
+                f'<span class="msg-timestamp">{msg["timestamp"]}</span>',
+                unsafe_allow_html=True,
+            )
         if show_reasoning and msg.get("reasoning"):
             with st.expander("Thought Train"):
                 st.markdown(msg["reasoning"])
@@ -156,10 +254,66 @@ for msg in st.session_state.messages:
             with st.expander(f"Excerpt {i} — {source}"):
                 st.write(chunk)
 
+
+# ── UI ────────────────────────────────────────────────────────────────────────
+
+st.set_page_config(page_title="Document Q&A", page_icon="💬", layout="wide")
+st.markdown(CSS, unsafe_allow_html=True)
+
+with st.sidebar:
+    st.title("Document Q&A")
+    st.caption("Ask questions about your documents, powered by AI.")
+    st.divider()
+    st.markdown("**How to use**")
+    st.markdown(
+        "- Add files to `documents/` and run **Add Documents** to ingest them\n"
+        "- Toggle **Thought Train** to see how the model reasoned through your question\n"
+        "- Expand any **Excerpt** to read the exact source text used in the answer"
+    )
+    st.divider()
+    show_reasoning = st.toggle("Thought Train")
+    msg_count = len(st.session_state.get("messages", []))
+    st.caption(f"{msg_count} message{'s' if msg_count != 1 else ''} in this session")
+    if st.button("Clear conversation", use_container_width=True):
+        st.session_state.messages = []
+        st.rerun()
+
+collection = get_collection()
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if not st.session_state.messages:
+    st.markdown(
+        """
+        <div style="text-align:center; padding:4rem 0; color:#9CA3AF;">
+            <div style="font-size:2.8rem; margin-bottom:0.75rem;">💬</div>
+            <p style="font-size:1.05rem; font-weight:600; color:#6B7280; margin:0;">
+                Ask a question to get started
+            </p>
+            <p style="font-size:0.85rem; margin-top:0.4rem;">
+                Your answers are grounded in the documents you have uploaded.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+for msg in st.session_state.messages:
+    render_message(msg, show_reasoning)
+
 if question := st.chat_input("Ask a question about your documents…"):
-    st.session_state.messages.append({"role": "user", "content": question})
-    with st.chat_message("user"):
-        st.markdown(question)
+    user_ts = datetime.now().strftime("%I:%M %p")
+    user_msg = {
+        "role": "user",
+        "content": question,
+        "timestamp": user_ts,
+        "sources": [],
+        "reasoning": "",
+        "chunk_sources": [],
+    }
+    st.session_state.messages.append(user_msg)
+    render_message(user_msg, show_reasoning)
 
     with st.chat_message("assistant"):
         with st.spinner("Searching documents…"):
@@ -173,7 +327,13 @@ if question := st.chat_input("Ask a question about your documents…"):
                 sources = []
                 reasoning = ""
                 chunk_sources = []
+
+        assistant_ts = datetime.now().strftime("%I:%M %p")
         st.markdown(answer)
+        st.markdown(
+            f'<span class="msg-timestamp">{assistant_ts}</span>',
+            unsafe_allow_html=True,
+        )
         if show_reasoning and reasoning:
             with st.expander("Thought Train"):
                 st.markdown(reasoning)
@@ -186,7 +346,10 @@ if question := st.chat_input("Ask a question about your documents…"):
     st.session_state.messages.append({
         "role": "assistant",
         "content": answer,
+        "timestamp": assistant_ts,
         "sources": sources,
         "reasoning": reasoning,
         "chunk_sources": chunk_sources,
     })
+
+    st.markdown(SCROLL_JS, unsafe_allow_html=True)
