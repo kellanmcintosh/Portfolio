@@ -2,14 +2,14 @@
 
 A local document question-answering app. Drop in PDFs or Word docs, ask questions in a chat interface, and get answers grounded in your documents — all running on your machine.
 
-Built with [Docling](https://github.com/DS4SD/docling), [ChromaDB](https://www.trychroma.com/), [Gemini](https://ai.google.dev/), and [Streamlit](https://streamlit.io/), orchestrated via Docker Compose.
+Built with [Docling](https://github.com/DS4SD/docling), [ChromaDB](https://www.trychroma.com/), [Groq](https://console.groq.com/), and [Streamlit](https://streamlit.io/), orchestrated via Docker Compose.
 
 ---
 
 ## Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
-- A [Gemini API key](https://aistudio.google.com/app/apikey) (free tier works)
+- A [Groq API key](https://console.groq.com/keys) (free tier works)
 
 ---
 
@@ -21,10 +21,10 @@ Built with [Docling](https://github.com/DS4SD/docling), [ChromaDB](https://www.t
 cp .env.example .env
 ```
 
-Open `.env` and replace `your_gemini_api_key_here` with your real key:
+Open `.env` and replace `your_groq_api_key_here` with your real key:
 
 ```
-GEMINI_API_KEY=AIza...
+GROQ_API_KEY=gsk_...
 CHROMA_HOST=chromadb
 CHROMA_PORT=8000
 ```
@@ -53,6 +53,13 @@ The browser opens automatically at `http://localhost:8501`. Type a question and 
 
 ---
 
+## Features
+
+- **Thought Train** — toggle in the sidebar to see a plain-English summary of how the model reasoned through your question
+- **Source excerpts** — collapsible excerpts below each answer show the exact text the model used
+
+---
+
 ## Daily use
 
 | Task | Script |
@@ -70,13 +77,13 @@ documents/          ← you drop files here
      │
      ▼
  ingestion          converts docs → markdown → 500-token chunks
-     │              embeds each chunk with Gemini text-embedding-004
+     │              embeds each chunk locally with sentence-transformers
      ▼
  ChromaDB           stores vectors + raw text locally on your machine
      │
      ▼
  frontend           embeds your question, finds the 5 closest chunks,
-                    sends them as context to Gemini 1.5 Pro, shows the answer
+                    sends them as context to Qwen3-32b via Groq, shows the answer
 ```
 
 Your vector database persists across restarts in a Docker named volume — you do not need to re-ingest documents every time you start the app.
