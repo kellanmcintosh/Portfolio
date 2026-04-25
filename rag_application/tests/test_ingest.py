@@ -26,8 +26,9 @@ class TestChunkText:
         words = [f"word{i}" for i in range(600)]
         chunks = ingest.chunk_text(" ".join(words))
         assert len(chunks) >= 2
-        end_of_first = set(chunks[0].split()[-10:])
-        start_of_second = set(chunks[1].split()[:10])
+        # 50-token overlap ≈ 25-50 words depending on tokenization; use 60-word windows to be safe
+        end_of_first = set(chunks[0].split()[-60:])
+        start_of_second = set(chunks[1].split()[:60])
         assert end_of_first & start_of_second, "Expected token overlap between consecutive chunks"
 
     def test_all_tokens_are_covered(self):

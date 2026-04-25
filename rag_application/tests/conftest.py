@@ -11,6 +11,9 @@ os.environ.setdefault("CHROMA_PORT", "8000")
 # Mock heavy deps so tests run without installing them
 sys.modules["sentence_transformers"] = MagicMock()
 sys.modules["streamlit"] = MagicMock()
+sys.modules["chromadb"] = MagicMock()
+sys.modules["docling"] = MagicMock()
+sys.modules["docling.document_converter"] = MagicMock()
 
 # Make ingestion/ and frontend/ importable
 root = Path(__file__).parent.parent

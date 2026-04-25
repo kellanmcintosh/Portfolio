@@ -44,8 +44,9 @@ class TestEmbedQuery:
 
 
 class TestRetrieve:
-    def _mock_collection(self, chunks, sources):
+    def _mock_collection(self, chunks, sources, count=None):
         col = MagicMock()
+        col.count.return_value = count if count is not None else max(len(chunks), app.TOP_K)
         col.query.return_value = {
             "documents": [chunks],
             "metadatas": [[{"source": s, "chunk_index": i} for i, s in enumerate(sources)]],
@@ -60,7 +61,7 @@ class TestRetrieve:
         assert sources == ["a.pdf", "b.pdf"]
 
     def test_queries_top_k_results(self):
-        col = self._mock_collection([], [])
+        col = self._mock_collection([], [], count=app.TOP_K)
         with patch.object(app, "embed_query", return_value=[0.1]):
             app.retrieve(col, "q")
         assert col.query.call_args.kwargs["n_results"] == app.TOP_K
@@ -69,6 +70,7 @@ class TestRetrieve:
 class TestAsk:
     def _mock_collection(self, chunks, sources):
         col = MagicMock()
+        col.count.return_value = max(len(chunks), app.TOP_K)
         col.query.return_value = {
             "documents": [chunks],
             "metadatas": [[{"source": s, "chunk_index": i} for i, s in enumerate(sources)]],
