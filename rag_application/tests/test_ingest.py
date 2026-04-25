@@ -39,39 +39,28 @@ class TestChunkText:
 
 
 class TestEmbed:
-    def _mock_response(self, vectors: list[list[float]]) -> MagicMock:
-        mock = MagicMock()
-        mock.json.return_value = {"embeddings": [{"values": v} for v in vectors]}
-        return mock
+    def _mock_encode(self, vectors: list[list[float]]) -> MagicMock:
+        result = MagicMock()
+        result.tolist.return_value = vectors
+        return result
 
     def test_returns_one_vector_per_input(self):
-        with patch("ingest.requests.post", return_value=self._mock_response([[0.1, 0.2], [0.3, 0.4]])):
+        with patch.object(ingest, "embed_model") as mock_model:
+            mock_model.encode.return_value = self._mock_encode([[0.1, 0.2], [0.3, 0.4]])
             result = ingest.embed(["chunk one", "chunk two"])
         assert result == [[0.1, 0.2], [0.3, 0.4]]
 
-    def test_hits_v1_stable_endpoint(self):
-        with patch("ingest.requests.post", return_value=self._mock_response([[0.1]])) as mock_post:
-            ingest.embed(["test"])
-            url = mock_post.call_args.args[0]
-            assert "/v1/" in url
-            assert "v1beta" not in url
+    def test_passes_all_texts_in_one_call(self):
+        with patch.object(ingest, "embed_model") as mock_model:
+            mock_model.encode.return_value = self._mock_encode([[0.1], [0.2], [0.3]])
+            ingest.embed(["a", "b", "c"])
+            texts_arg = mock_model.encode.call_args.args[0]
+            assert texts_arg == ["a", "b", "c"]
+            assert mock_model.encode.call_count == 1
 
-    def test_uses_batch_embed_endpoint(self):
-        with patch("ingest.requests.post", return_value=self._mock_response([[0.1]])) as mock_post:
+    def test_uses_normalized_embeddings(self):
+        with patch.object(ingest, "embed_model") as mock_model:
+            mock_model.encode.return_value = self._mock_encode([[0.1]])
             ingest.embed(["test"])
-            url = mock_post.call_args.args[0]
-            assert "batchEmbedContents" in url
-
-    def test_sends_retrieval_document_task_type(self):
-        with patch("ingest.requests.post", return_value=self._mock_response([[0.1]])) as mock_post:
-            ingest.embed(["test"])
-            body = mock_post.call_args.kwargs["json"]
-            assert body["requests"][0]["taskType"] == "RETRIEVAL_DOCUMENT"
-
-    def test_batches_all_texts_in_one_request(self):
-        texts = ["a", "b", "c"]
-        with patch("ingest.requests.post", return_value=self._mock_response([[0.1]] * 3)) as mock_post:
-            ingest.embed(texts)
-            body = mock_post.call_args.kwargs["json"]
-            assert len(body["requests"]) == 3
-            assert mock_post.call_count == 1
+            kwargs = mock_model.encode.call_args.kwargs
+            assert kwargs.get("normalize_embeddings") is True

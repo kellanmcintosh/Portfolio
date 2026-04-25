@@ -1,4 +1,4 @@
 docling
 chromadb
 tiktoken
-requests
+sentence-transformers

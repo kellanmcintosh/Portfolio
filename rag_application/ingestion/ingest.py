@@ -2,23 +2,21 @@ import os
 import sys
 from pathlib import Path
 
-import requests
 import tiktoken
 import chromadb
+from sentence_transformers import SentenceTransformer
 from docling.document_converter import DocumentConverter
 
 DOCUMENTS_DIR = Path("/documents")
 COLLECTION_NAME = "documents"
 CHUNK_TOKENS = 500
 OVERLAP_TOKENS = 50
-EMBED_MODEL = "text-embedding-004"
 
 CHROMA_HOST = os.environ["CHROMA_HOST"]
 CHROMA_PORT = int(os.environ["CHROMA_PORT"])
-GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 
-GEMINI_BASE = "https://generativelanguage.googleapis.com/v1"
 tokenizer = tiktoken.get_encoding("cl100k_base")
+embed_model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
 def chunk_text(text: str) -> list[str]:
@@ -33,20 +31,7 @@ def chunk_text(text: str) -> list[str]:
 
 
 def embed(texts: list[str]) -> list[list[float]]:
-    url = f"{GEMINI_BASE}/models/{EMBED_MODEL}:batchEmbedContents"
-    body = {
-        "requests": [
-            {
-                "model": f"models/{EMBED_MODEL}",
-                "content": {"parts": [{"text": t}]},
-                "taskType": "RETRIEVAL_DOCUMENT",
-            }
-            for t in texts
-        ]
-    }
-    response = requests.post(url, params={"key": GEMINI_API_KEY}, json=body)
-    response.raise_for_status()
-    return [e["values"] for e in response.json()["embeddings"]]
+    return embed_model.encode(texts, normalize_embeddings=True).tolist()
 
 
 def main():

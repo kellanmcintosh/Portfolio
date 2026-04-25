@@ -2,10 +2,10 @@ import os
 import requests
 import chromadb
 import streamlit as st
+from sentence_transformers import SentenceTransformer
 
 COLLECTION_NAME = "documents"
-EMBED_MODEL = "text-embedding-004"
-CHAT_MODEL = "gemini-1.5-pro"
+CHAT_MODEL = "gemini-1.5-flash"
 TOP_K = 5
 
 CHROMA_HOST = os.environ["CHROMA_HOST"]
@@ -13,6 +13,12 @@ CHROMA_PORT = int(os.environ["CHROMA_PORT"])
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1"
+embed_model = SentenceTransformer("all-MiniLM-L6-v2")
+
+SYSTEM_PROMPT = (
+    "You are a helpful assistant. Answer the user's question using only "
+    "the context provided. If the answer is not in the context, say you don't know."
+)
 
 
 @st.cache_resource
@@ -22,21 +28,12 @@ def get_collection():
 
 
 def embed_query(text: str) -> list[float]:
-    url = f"{GEMINI_BASE}/models/{EMBED_MODEL}:embedContent"
-    body = {
-        "model": f"models/{EMBED_MODEL}",
-        "content": {"parts": [{"text": text}]},
-        "taskType": "RETRIEVAL_QUERY",
-    }
-    response = requests.post(url, params={"key": GEMINI_API_KEY}, json=body)
-    response.raise_for_status()
-    return response.json()["embedding"]["values"]
+    return embed_model.encode(text, normalize_embeddings=True).tolist()
 
 
 def retrieve(collection, question: str) -> tuple[list[str], list[str]]:
-    query_embedding = embed_query(question)
     results = collection.query(
-        query_embeddings=[query_embedding],
+        query_embeddings=[embed_query(question)],
         n_results=TOP_K,
         include=["documents", "metadatas"],
     )
@@ -49,20 +46,16 @@ def build_prompt(question: str, chunks: list[str], sources: list[str]) -> str:
     context_blocks = "\n\n".join(
         f"[Source: {src}]\n{chunk}" for src, chunk in zip(sources, chunks)
     )
-    return (
-        "You are a helpful assistant. Answer the question using only the context below. "
-        "If the answer is not in the context, say you don't know.\n\n"
-        f"Context:\n{context_blocks}\n\n"
-        f"Question: {question}\n\n"
-        "Answer:"
-    )
+    return f"Context:\n{context_blocks}\n\nQuestion: {question}"
 
 
 def ask(collection, question: str) -> tuple[str, list[str]]:
     chunks, sources = retrieve(collection, question)
-    prompt = build_prompt(question, chunks, sources)
     url = f"{GEMINI_BASE}/models/{CHAT_MODEL}:generateContent"
-    body = {"contents": [{"parts": [{"text": prompt}]}]}
+    body = {
+        "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "contents": [{"parts": [{"text": build_prompt(question, chunks, sources)}]}],
+    }
     response = requests.post(url, params={"key": GEMINI_API_KEY}, json=body)
     response.raise_for_status()
     answer = response.json()["candidates"][0]["content"]["parts"][0]["text"]

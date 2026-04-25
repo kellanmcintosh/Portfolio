@@ -22,44 +22,25 @@ class TestBuildPrompt:
         assert "a.pdf" in prompt
         assert "b.pdf" in prompt
 
-    def test_instructs_model_to_use_only_context(self):
-        prompt = app.build_prompt("Q?", ["chunk"], ["doc.pdf"])
-        assert "only the context" in prompt
-
-    def test_includes_fallback_instruction(self):
-        prompt = app.build_prompt("Q?", ["chunk"], ["doc.pdf"])
-        assert "don't know" in prompt
-
 
 class TestEmbedQuery:
-    def _mock_response(self, vector: list[float]) -> MagicMock:
-        mock = MagicMock()
-        mock.json.return_value = {"embedding": {"values": vector}}
-        return mock
+    def _mock_encode(self, vector: list[float]) -> MagicMock:
+        result = MagicMock()
+        result.tolist.return_value = vector
+        return result
 
     def test_returns_vector(self):
-        with patch("app.requests.post", return_value=self._mock_response([0.1, 0.2, 0.3])):
+        with patch.object(app, "embed_model") as mock_model:
+            mock_model.encode.return_value = self._mock_encode([0.1, 0.2, 0.3])
             result = app.embed_query("What is X?")
         assert result == [0.1, 0.2, 0.3]
 
-    def test_hits_v1_stable_endpoint(self):
-        with patch("app.requests.post", return_value=self._mock_response([0.1])) as mock_post:
+    def test_uses_normalized_embeddings(self):
+        with patch.object(app, "embed_model") as mock_model:
+            mock_model.encode.return_value = self._mock_encode([0.1])
             app.embed_query("test")
-            url = mock_post.call_args.args[0]
-            assert "/v1/" in url
-            assert "v1beta" not in url
-
-    def test_sends_retrieval_query_task_type(self):
-        with patch("app.requests.post", return_value=self._mock_response([0.1])) as mock_post:
-            app.embed_query("test")
-            body = mock_post.call_args.kwargs["json"]
-            assert body["taskType"] == "RETRIEVAL_QUERY"
-
-    def test_uses_correct_model(self):
-        with patch("app.requests.post", return_value=self._mock_response([0.1])) as mock_post:
-            app.embed_query("test")
-            body = mock_post.call_args.kwargs["json"]
-            assert app.EMBED_MODEL in body["model"]
+            kwargs = mock_model.encode.call_args.kwargs
+            assert kwargs.get("normalize_embeddings") is True
 
 
 class TestRetrieve:
@@ -86,13 +67,6 @@ class TestRetrieve:
 
 
 class TestAsk:
-    def _mock_generate_response(self, text: str) -> MagicMock:
-        mock = MagicMock()
-        mock.json.return_value = {
-            "candidates": [{"content": {"parts": [{"text": text}]}}]
-        }
-        return mock
-
     def _mock_collection(self, chunks, sources):
         col = MagicMock()
         col.query.return_value = {
@@ -101,17 +75,42 @@ class TestAsk:
         }
         return col
 
+    def _mock_response(self, text: str) -> MagicMock:
+        mock = MagicMock()
+        mock.json.return_value = {
+            "candidates": [{"content": {"parts": [{"text": text}]}}]
+        }
+        return mock
+
     def test_returns_model_answer(self):
         col = self._mock_collection(["context"], ["doc.pdf"])
         with patch.object(app, "embed_query", return_value=[0.1]), \
-             patch("app.requests.post", return_value=self._mock_generate_response("42 is the answer.")):
+             patch("app.requests.post", return_value=self._mock_response("42 is the answer.")):
             answer, _ = app.ask(col, "What is the answer?")
         assert answer == "42 is the answer."
 
     def test_deduplicates_sources(self):
         col = self._mock_collection(["c1", "c2", "c3"], ["doc.pdf", "doc.pdf", "other.pdf"])
         with patch.object(app, "embed_query", return_value=[0.1]), \
-             patch("app.requests.post", return_value=self._mock_generate_response("answer")):
+             patch("app.requests.post", return_value=self._mock_response("answer")):
             _, sources = app.ask(col, "question")
         assert sources.count("doc.pdf") == 1
         assert "other.pdf" in sources
+
+    def test_hits_v1_stable_endpoint(self):
+        col = self._mock_collection(["context"], ["doc.pdf"])
+        with patch.object(app, "embed_query", return_value=[0.1]), \
+             patch("app.requests.post", return_value=self._mock_response("answer")) as mock_post:
+            app.ask(col, "question")
+            url = mock_post.call_args.args[0]
+            assert "/v1/" in url
+            assert "v1beta" not in url
+
+    def test_includes_system_instruction(self):
+        col = self._mock_collection(["context"], ["doc.pdf"])
+        with patch.object(app, "embed_query", return_value=[0.1]), \
+             patch("app.requests.post", return_value=self._mock_response("answer")) as mock_post:
+            app.ask(col, "question")
+            body = mock_post.call_args.kwargs["json"]
+            assert "system_instruction" in body
+            assert len(body["system_instruction"]["parts"][0]["text"]) > 0
