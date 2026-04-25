@@ -5,7 +5,7 @@ import streamlit as st
 from sentence_transformers import SentenceTransformer
 
 COLLECTION_NAME = "documents"
-CHAT_MODEL = "gemini-1.5-flash"
+CHAT_MODEL = "gemini-2.0-flash"
 TOP_K = 5
 
 CHROMA_HOST = os.environ["CHROMA_HOST"]
