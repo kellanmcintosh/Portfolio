@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 # Required before any service module is imported
-os.environ.setdefault("GEMINI_API_KEY", "test-key")
+os.environ.setdefault("GROQ_API_KEY", "test-key")
 os.environ.setdefault("CHROMA_HOST", "localhost")
 os.environ.setdefault("CHROMA_PORT", "8000")
 

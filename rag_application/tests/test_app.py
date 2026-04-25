@@ -77,8 +77,9 @@ class TestAsk:
 
     def _mock_response(self, text: str) -> MagicMock:
         mock = MagicMock()
+        mock.ok = True
         mock.json.return_value = {
-            "candidates": [{"content": {"parts": [{"text": text}]}}]
+            "choices": [{"message": {"content": text}}]
         }
         return mock
 
@@ -97,20 +98,19 @@ class TestAsk:
         assert sources.count("doc.pdf") == 1
         assert "other.pdf" in sources
 
-    def test_hits_v1_stable_endpoint(self):
+    def test_sends_bearer_auth(self):
         col = self._mock_collection(["context"], ["doc.pdf"])
         with patch.object(app, "embed_query", return_value=[0.1]), \
              patch("app.requests.post", return_value=self._mock_response("answer")) as mock_post:
             app.ask(col, "question")
-            url = mock_post.call_args.args[0]
-            assert "/v1/" in url
-            assert "v1beta" not in url
+            headers = mock_post.call_args.kwargs["headers"]
+            assert headers["Authorization"].startswith("Bearer ")
 
-    def test_includes_system_instruction(self):
+    def test_sends_system_message(self):
         col = self._mock_collection(["context"], ["doc.pdf"])
         with patch.object(app, "embed_query", return_value=[0.1]), \
              patch("app.requests.post", return_value=self._mock_response("answer")) as mock_post:
             app.ask(col, "question")
-            body = mock_post.call_args.kwargs["json"]
-            assert "system_instruction" in body
-            assert len(body["system_instruction"]["parts"][0]["text"]) > 0
+            messages = mock_post.call_args.kwargs["json"]["messages"]
+            roles = [m["role"] for m in messages]
+            assert "system" in roles

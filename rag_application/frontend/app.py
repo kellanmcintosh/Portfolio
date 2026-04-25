@@ -5,14 +5,14 @@ import streamlit as st
 from sentence_transformers import SentenceTransformer
 
 COLLECTION_NAME = "documents"
-CHAT_MODEL = "gemini-2.0-flash"
+CHAT_MODEL = "llama-3.3-70b-versatile"
 TOP_K = 5
 
 CHROMA_HOST = os.environ["CHROMA_HOST"]
 CHROMA_PORT = int(os.environ["CHROMA_PORT"])
-GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
+GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 
-GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 embed_model = SentenceTransformer("all-MiniLM-L6-v2")
 
 SYSTEM_PROMPT = (
@@ -46,23 +46,25 @@ def build_prompt(question: str, chunks: list[str], sources: list[str]) -> str:
     context_blocks = "\n\n".join(
         f"[Source: {src}]\n{chunk}" for src, chunk in zip(sources, chunks)
     )
-    return (
-        f"{SYSTEM_PROMPT}\n\n"
-        f"Context:\n{context_blocks}\n\n"
-        f"Question: {question}"
-    )
+    return f"Context:\n{context_blocks}\n\nQuestion: {question}"
 
 
 def ask(collection, question: str) -> tuple[str, list[str]]:
     chunks, sources = retrieve(collection, question)
-    url = f"{GEMINI_BASE}/models/{CHAT_MODEL}:generateContent"
-    body = {
-        "contents": [{"role": "user", "parts": [{"text": build_prompt(question, chunks, sources)}]}],
-    }
-    response = requests.post(url, params={"key": GEMINI_API_KEY}, json=body)
+    response = requests.post(
+        GROQ_URL,
+        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+        json={
+            "model": CHAT_MODEL,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": build_prompt(question, chunks, sources)},
+            ],
+        },
+    )
     if not response.ok:
         raise Exception(f"{response.status_code} {response.reason}: {response.json()}")
-    answer = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+    answer = response.json()["choices"][0]["message"]["content"]
     unique_sources = list(dict.fromkeys(sources))
     return answer, unique_sources
 
