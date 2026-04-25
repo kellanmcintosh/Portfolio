@@ -43,6 +43,51 @@ class TestEmbedQuery:
             assert kwargs.get("normalize_embeddings") is True
 
 
+class TestParseResponse:
+    def test_extracts_thinking_and_answer(self):
+        content = "<think>reasoning here</think>The answer is 42."
+        thinking, answer = app.parse_response(content)
+        assert thinking == "reasoning here"
+        assert answer == "The answer is 42."
+
+    def test_no_think_tags_returns_empty_thinking(self):
+        content = "Direct answer without reasoning."
+        thinking, answer = app.parse_response(content)
+        assert thinking == ""
+        assert answer == "Direct answer without reasoning."
+
+    def test_strips_whitespace_from_thinking(self):
+        content = "<think>\n  reasoning  \n</think>Answer."
+        thinking, _ = app.parse_response(content)
+        assert thinking == "reasoning"
+
+    def test_answer_stripped_of_leading_whitespace(self):
+        content = "<think>reasoning</think>\n\nThe answer."
+        _, answer = app.parse_response(content)
+        assert answer == "The answer."
+
+
+class TestSummarizeThinking:
+    def _mock_response(self, text: str) -> MagicMock:
+        mock = MagicMock()
+        mock.ok = True
+        mock.json.return_value = {"choices": [{"message": {"content": text}}]}
+        return mock
+
+    def test_returns_summary_text(self):
+        with patch("app.requests.post", return_value=self._mock_response("Plain explanation.")):
+            result = app.summarize_thinking("complex internal reasoning...")
+        assert result == "Plain explanation."
+
+    def test_returns_empty_string_on_api_failure(self):
+        mock = MagicMock()
+        mock.ok = False
+        mock.status_code = 500
+        with patch("app.requests.post", return_value=mock):
+            result = app.summarize_thinking("reasoning")
+        assert result == ""
+
+
 class TestRetrieve:
     def _mock_collection(self, chunks, sources, count=None):
         col = MagicMock()
@@ -80,25 +125,49 @@ class TestAsk:
     def _mock_response(self, text: str) -> MagicMock:
         mock = MagicMock()
         mock.ok = True
-        mock.json.return_value = {
-            "choices": [{"message": {"content": text}}]
-        }
+        mock.json.return_value = {"choices": [{"message": {"content": text}}]}
         return mock
 
     def test_returns_model_answer(self):
         col = self._mock_collection(["context"], ["doc.pdf"])
         with patch.object(app, "embed_query", return_value=[0.1]), \
              patch("app.requests.post", return_value=self._mock_response("42 is the answer.")):
-            answer, _ = app.ask(col, "What is the answer?")
+            answer, *_ = app.ask(col, "What is the answer?")
         assert answer == "42 is the answer."
 
     def test_deduplicates_sources(self):
         col = self._mock_collection(["c1", "c2", "c3"], ["doc.pdf", "doc.pdf", "other.pdf"])
         with patch.object(app, "embed_query", return_value=[0.1]), \
              patch("app.requests.post", return_value=self._mock_response("answer")):
-            _, sources = app.ask(col, "question")
+            _, sources, *_ = app.ask(col, "question")
         assert sources.count("doc.pdf") == 1
         assert "other.pdf" in sources
+
+    def test_returns_chunk_sources_pairs(self):
+        col = self._mock_collection(["chunk one", "chunk two"], ["a.pdf", "b.pdf"])
+        with patch.object(app, "embed_query", return_value=[0.1]), \
+             patch("app.requests.post", return_value=self._mock_response("answer")):
+            *_, chunk_sources = app.ask(col, "question")
+        assert ("chunk one", "a.pdf") in chunk_sources
+        assert ("chunk two", "b.pdf") in chunk_sources
+
+    def test_no_reasoning_by_default(self):
+        col = self._mock_collection(["context"], ["doc.pdf"])
+        with patch.object(app, "embed_query", return_value=[0.1]), \
+             patch("app.requests.post", return_value=self._mock_response("<think>thinking</think>answer")):
+            _, _, reasoning, _ = app.ask(col, "question")
+        assert reasoning == ""
+
+    def test_returns_reasoning_when_requested(self):
+        col = self._mock_collection(["context"], ["doc.pdf"])
+        with patch.object(app, "embed_query", return_value=[0.1]), \
+             patch("app.requests.post") as mock_post:
+            mock_post.side_effect = [
+                self._mock_response("<think>I found the answer in context.</think>The answer."),
+                self._mock_response("Plain explanation."),
+            ]
+            _, _, reasoning, _ = app.ask(col, "question", include_reasoning=True)
+        assert reasoning == "Plain explanation."
 
     def test_sends_bearer_auth(self):
         col = self._mock_collection(["context"], ["doc.pdf"])
