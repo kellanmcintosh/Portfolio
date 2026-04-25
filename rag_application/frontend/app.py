@@ -12,7 +12,7 @@ CHROMA_HOST = os.environ["CHROMA_HOST"]
 CHROMA_PORT = int(os.environ["CHROMA_PORT"])
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 
-GEMINI_BASE = "https://generativelanguage.googleapis.com/v1"
+GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
 embed_model = SentenceTransformer("all-MiniLM-L6-v2")
 
 SYSTEM_PROMPT = (
@@ -46,18 +46,22 @@ def build_prompt(question: str, chunks: list[str], sources: list[str]) -> str:
     context_blocks = "\n\n".join(
         f"[Source: {src}]\n{chunk}" for src, chunk in zip(sources, chunks)
     )
-    return f"Context:\n{context_blocks}\n\nQuestion: {question}"
+    return (
+        f"{SYSTEM_PROMPT}\n\n"
+        f"Context:\n{context_blocks}\n\n"
+        f"Question: {question}"
+    )
 
 
 def ask(collection, question: str) -> tuple[str, list[str]]:
     chunks, sources = retrieve(collection, question)
     url = f"{GEMINI_BASE}/models/{CHAT_MODEL}:generateContent"
     body = {
-        "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": [{"role": "user", "parts": [{"text": build_prompt(question, chunks, sources)}]}],
     }
     response = requests.post(url, params={"key": GEMINI_API_KEY}, json=body)
-    response.raise_for_status()
+    if not response.ok:
+        raise Exception(f"{response.status_code} {response.reason}: {response.json()}")
     answer = response.json()["candidates"][0]["content"]["parts"][0]["text"]
     unique_sources = list(dict.fromkeys(sources))
     return answer, unique_sources
