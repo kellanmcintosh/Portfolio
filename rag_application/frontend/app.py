@@ -1,10 +1,11 @@
 import os
 import chromadb
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import streamlit as st
 
 COLLECTION_NAME = "documents"
-EMBED_MODEL = "models/text-embedding-004"
+EMBED_MODEL = "text-embedding-004"
 CHAT_MODEL = "gemini-1.5-pro"
 TOP_K = 5
 
@@ -12,22 +13,22 @@ CHROMA_HOST = os.environ["CHROMA_HOST"]
 CHROMA_PORT = int(os.environ["CHROMA_PORT"])
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 
-genai.configure(api_key=GEMINI_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 @st.cache_resource
 def get_collection():
-    client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
-    return client.get_or_create_collection(COLLECTION_NAME)
+    chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
+    return chroma_client.get_or_create_collection(COLLECTION_NAME)
 
 
 def embed_query(text: str) -> list[float]:
-    result = genai.embed_content(
+    result = client.models.embed_content(
         model=EMBED_MODEL,
-        content=text,
-        task_type="retrieval_query",
+        contents=text,
+        config=types.EmbedContentConfig(task_type="RETRIEVAL_QUERY"),
     )
-    return result["embedding"]
+    return result.embeddings[0].values
 
 
 def retrieve(collection, question: str) -> tuple[list[str], list[str]]:
@@ -58,8 +59,10 @@ def build_prompt(question: str, chunks: list[str], sources: list[str]) -> str:
 def ask(collection, question: str) -> tuple[str, list[str]]:
     chunks, sources = retrieve(collection, question)
     prompt = build_prompt(question, chunks, sources)
-    model = genai.GenerativeModel(CHAT_MODEL)
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(
+        model=CHAT_MODEL,
+        contents=prompt,
+    )
     unique_sources = list(dict.fromkeys(sources))
     return response.text, unique_sources
 

@@ -4,20 +4,21 @@ from pathlib import Path
 
 import tiktoken
 import chromadb
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from docling.document_converter import DocumentConverter
 
 DOCUMENTS_DIR = Path("/documents")
 COLLECTION_NAME = "documents"
 CHUNK_TOKENS = 500
 OVERLAP_TOKENS = 50
-EMBED_MODEL = "models/text-embedding-004"
+EMBED_MODEL = "text-embedding-004"
 
 CHROMA_HOST = os.environ["CHROMA_HOST"]
 CHROMA_PORT = int(os.environ["CHROMA_PORT"])
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 
-genai.configure(api_key=GEMINI_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY)
 tokenizer = tiktoken.get_encoding("cl100k_base")
 
 
@@ -27,19 +28,18 @@ def chunk_text(text: str) -> list[str]:
     start = 0
     while start < len(tokens):
         end = start + CHUNK_TOKENS
-        chunk_tokens = tokens[start:end]
-        chunks.append(tokenizer.decode(chunk_tokens))
+        chunks.append(tokenizer.decode(tokens[start:end]))
         start += CHUNK_TOKENS - OVERLAP_TOKENS
     return chunks
 
 
 def embed(texts: list[str]) -> list[list[float]]:
-    result = genai.embed_content(
+    result = client.models.embed_content(
         model=EMBED_MODEL,
-        content=texts,
-        task_type="retrieval_document",
+        contents=texts,
+        config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT"),
     )
-    return result["embedding"] if isinstance(texts, str) else result["embedding"]
+    return [e.values for e in result.embeddings]
 
 
 def main():
@@ -51,8 +51,8 @@ def main():
     print(f"Found {len(files)} file(s) to ingest.")
 
     converter = DocumentConverter()
-    client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
-    collection = client.get_or_create_collection(COLLECTION_NAME)
+    chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
+    collection = chroma_client.get_or_create_collection(COLLECTION_NAME)
 
     for file_path in files:
         print(f"  Converting: {file_path.name}")
@@ -68,7 +68,6 @@ def main():
 
         ids = [f"{file_path.name}_chunk_{i}" for i in range(len(chunks))]
         metadatas = [{"source": file_path.name, "chunk_index": i} for i in range(len(chunks))]
-
         embeddings = embed(chunks)
 
         collection.upsert(
