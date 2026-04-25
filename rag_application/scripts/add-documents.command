@@ -24,10 +24,10 @@ if [ "$doc_count" -eq 0 ]; then
     exit 0
 fi
 
-echo "📄  Found $doc_count document(s) — starting ingestion..."
+echo "📄  Found $doc_count document(s) — building and starting ingestion..."
 echo ""
 
-docker compose run --rm ingestion 2>&1 | grep -v "^$" | sed 's/^/    /'
+docker compose run --rm --build ingestion 2>&1 | grep -v "^$" | sed 's/^/    /'
 
 echo ""
 echo "✅  Ingestion complete. You can now ask questions in the chat."
