@@ -23,7 +23,6 @@ class TestChunkText:
             assert len(ingest.tokenizer.encode(chunk)) <= ingest.CHUNK_TOKENS
 
     def test_overlap_produces_shared_content(self):
-        # Unique words so we can verify overlap precisely
         words = [f"word{i}" for i in range(600)]
         chunks = ingest.chunk_text(" ".join(words))
         assert len(chunks) >= 2
@@ -32,7 +31,6 @@ class TestChunkText:
         assert end_of_first & start_of_second, "Expected token overlap between consecutive chunks"
 
     def test_all_tokens_are_covered(self):
-        # Every token in the source should appear in at least one chunk
         text = " ".join([f"tok{i}" for i in range(300)])
         chunks = ingest.chunk_text(text)
         combined = " ".join(chunks)
@@ -41,31 +39,39 @@ class TestChunkText:
 
 
 class TestEmbed:
-    def _make_mock_result(self, vectors: list[list[float]]):
-        embeddings = []
-        for v in vectors:
-            e = MagicMock()
-            e.values = v
-            embeddings.append(e)
-        result = MagicMock()
-        result.embeddings = embeddings
-        return result
+    def _mock_response(self, vectors: list[list[float]]) -> MagicMock:
+        mock = MagicMock()
+        mock.json.return_value = {"embeddings": [{"values": v} for v in vectors]}
+        return mock
 
     def test_returns_one_vector_per_input(self):
-        mock_result = self._make_mock_result([[0.1, 0.2], [0.3, 0.4]])
-        with patch.object(ingest.client.models, "embed_content", return_value=mock_result):
+        with patch("ingest.requests.post", return_value=self._mock_response([[0.1, 0.2], [0.3, 0.4]])):
             result = ingest.embed(["chunk one", "chunk two"])
         assert result == [[0.1, 0.2], [0.3, 0.4]]
 
-    def test_calls_api_with_correct_model(self):
-        mock_result = self._make_mock_result([[0.1]])
-        with patch.object(ingest.client.models, "embed_content", return_value=mock_result) as mock_call:
+    def test_hits_v1_stable_endpoint(self):
+        with patch("ingest.requests.post", return_value=self._mock_response([[0.1]])) as mock_post:
             ingest.embed(["test"])
-            assert mock_call.call_args.kwargs["model"] == ingest.EMBED_MODEL
+            url = mock_post.call_args.args[0]
+            assert "/v1/" in url
+            assert "v1beta" not in url
 
-    def test_calls_api_with_retrieval_document_task_type(self):
-        mock_result = self._make_mock_result([[0.1]])
-        with patch.object(ingest.client.models, "embed_content", return_value=mock_result) as mock_call:
+    def test_uses_batch_embed_endpoint(self):
+        with patch("ingest.requests.post", return_value=self._mock_response([[0.1]])) as mock_post:
             ingest.embed(["test"])
-            config = mock_call.call_args.kwargs["config"]
-            assert config.task_type == "RETRIEVAL_DOCUMENT"
+            url = mock_post.call_args.args[0]
+            assert "batchEmbedContents" in url
+
+    def test_sends_retrieval_document_task_type(self):
+        with patch("ingest.requests.post", return_value=self._mock_response([[0.1]])) as mock_post:
+            ingest.embed(["test"])
+            body = mock_post.call_args.kwargs["json"]
+            assert body["requests"][0]["taskType"] == "RETRIEVAL_DOCUMENT"
+
+    def test_batches_all_texts_in_one_request(self):
+        texts = ["a", "b", "c"]
+        with patch("ingest.requests.post", return_value=self._mock_response([[0.1]] * 3)) as mock_post:
+            ingest.embed(texts)
+            body = mock_post.call_args.kwargs["json"]
+            assert len(body["requests"]) == 3
+            assert mock_post.call_count == 1

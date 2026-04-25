@@ -32,28 +32,34 @@ class TestBuildPrompt:
 
 
 class TestEmbedQuery:
-    def _make_mock_result(self, vector: list[float]):
-        embedding = MagicMock()
-        embedding.values = vector
-        result = MagicMock()
-        result.embeddings = [embedding]
-        return result
+    def _mock_response(self, vector: list[float]) -> MagicMock:
+        mock = MagicMock()
+        mock.json.return_value = {"embedding": {"values": vector}}
+        return mock
 
     def test_returns_vector(self):
-        with patch.object(app.client.models, "embed_content", return_value=self._make_mock_result([0.1, 0.2, 0.3])):
+        with patch("app.requests.post", return_value=self._mock_response([0.1, 0.2, 0.3])):
             result = app.embed_query("What is X?")
         assert result == [0.1, 0.2, 0.3]
 
-    def test_uses_retrieval_query_task_type(self):
-        with patch.object(app.client.models, "embed_content", return_value=self._make_mock_result([0.1])) as mock_call:
-            app.embed_query("test question")
-            config = mock_call.call_args.kwargs["config"]
-            assert config.task_type == "RETRIEVAL_QUERY"
+    def test_hits_v1_stable_endpoint(self):
+        with patch("app.requests.post", return_value=self._mock_response([0.1])) as mock_post:
+            app.embed_query("test")
+            url = mock_post.call_args.args[0]
+            assert "/v1/" in url
+            assert "v1beta" not in url
+
+    def test_sends_retrieval_query_task_type(self):
+        with patch("app.requests.post", return_value=self._mock_response([0.1])) as mock_post:
+            app.embed_query("test")
+            body = mock_post.call_args.kwargs["json"]
+            assert body["taskType"] == "RETRIEVAL_QUERY"
 
     def test_uses_correct_model(self):
-        with patch.object(app.client.models, "embed_content", return_value=self._make_mock_result([0.1])) as mock_call:
+        with patch("app.requests.post", return_value=self._mock_response([0.1])) as mock_post:
             app.embed_query("test")
-            assert mock_call.call_args.kwargs["model"] == app.EMBED_MODEL
+            body = mock_post.call_args.kwargs["json"]
+            assert app.EMBED_MODEL in body["model"]
 
 
 class TestRetrieve:
@@ -80,37 +86,32 @@ class TestRetrieve:
 
 
 class TestAsk:
-    def test_deduplicates_sources(self):
+    def _mock_generate_response(self, text: str) -> MagicMock:
+        mock = MagicMock()
+        mock.json.return_value = {
+            "candidates": [{"content": {"parts": [{"text": text}]}}]
+        }
+        return mock
+
+    def _mock_collection(self, chunks, sources):
         col = MagicMock()
         col.query.return_value = {
-            "documents": [["c1", "c2", "c3"]],
-            "metadatas": [[
-                {"source": "doc.pdf", "chunk_index": 0},
-                {"source": "doc.pdf", "chunk_index": 1},
-                {"source": "other.pdf", "chunk_index": 0},
-            ]],
+            "documents": [chunks],
+            "metadatas": [[{"source": s, "chunk_index": i} for i, s in enumerate(sources)]],
         }
-        mock_response = MagicMock()
-        mock_response.text = "The answer."
-
-        with patch.object(app, "embed_query", return_value=[0.1]), \
-             patch.object(app.client.models, "generate_content", return_value=mock_response):
-            _, sources = app.ask(col, "question")
-
-        assert sources.count("doc.pdf") == 1
-        assert "other.pdf" in sources
+        return col
 
     def test_returns_model_answer(self):
-        col = MagicMock()
-        col.query.return_value = {
-            "documents": [["context"]],
-            "metadatas": [[{"source": "doc.pdf", "chunk_index": 0}]],
-        }
-        mock_response = MagicMock()
-        mock_response.text = "42 is the answer."
-
+        col = self._mock_collection(["context"], ["doc.pdf"])
         with patch.object(app, "embed_query", return_value=[0.1]), \
-             patch.object(app.client.models, "generate_content", return_value=mock_response):
+             patch("app.requests.post", return_value=self._mock_generate_response("42 is the answer.")):
             answer, _ = app.ask(col, "What is the answer?")
-
         assert answer == "42 is the answer."
+
+    def test_deduplicates_sources(self):
+        col = self._mock_collection(["c1", "c2", "c3"], ["doc.pdf", "doc.pdf", "other.pdf"])
+        with patch.object(app, "embed_query", return_value=[0.1]), \
+             patch("app.requests.post", return_value=self._mock_generate_response("answer")):
+            _, sources = app.ask(col, "question")
+        assert sources.count("doc.pdf") == 1
+        assert "other.pdf" in sources

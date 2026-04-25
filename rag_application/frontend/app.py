@@ -1,7 +1,6 @@
 import os
+import requests
 import chromadb
-from google import genai
-from google.genai import types
 import streamlit as st
 
 COLLECTION_NAME = "documents"
@@ -13,7 +12,7 @@ CHROMA_HOST = os.environ["CHROMA_HOST"]
 CHROMA_PORT = int(os.environ["CHROMA_PORT"])
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+GEMINI_BASE = "https://generativelanguage.googleapis.com/v1"
 
 
 @st.cache_resource
@@ -23,12 +22,15 @@ def get_collection():
 
 
 def embed_query(text: str) -> list[float]:
-    result = client.models.embed_content(
-        model=EMBED_MODEL,
-        contents=text,
-        config=types.EmbedContentConfig(task_type="RETRIEVAL_QUERY"),
-    )
-    return result.embeddings[0].values
+    url = f"{GEMINI_BASE}/models/{EMBED_MODEL}:embedContent"
+    body = {
+        "model": f"models/{EMBED_MODEL}",
+        "content": {"parts": [{"text": text}]},
+        "taskType": "RETRIEVAL_QUERY",
+    }
+    response = requests.post(url, params={"key": GEMINI_API_KEY}, json=body)
+    response.raise_for_status()
+    return response.json()["embedding"]["values"]
 
 
 def retrieve(collection, question: str) -> tuple[list[str], list[str]]:
@@ -59,12 +61,13 @@ def build_prompt(question: str, chunks: list[str], sources: list[str]) -> str:
 def ask(collection, question: str) -> tuple[str, list[str]]:
     chunks, sources = retrieve(collection, question)
     prompt = build_prompt(question, chunks, sources)
-    response = client.models.generate_content(
-        model=CHAT_MODEL,
-        contents=prompt,
-    )
+    url = f"{GEMINI_BASE}/models/{CHAT_MODEL}:generateContent"
+    body = {"contents": [{"parts": [{"text": prompt}]}]}
+    response = requests.post(url, params={"key": GEMINI_API_KEY}, json=body)
+    response.raise_for_status()
+    answer = response.json()["candidates"][0]["content"]["parts"][0]["text"]
     unique_sources = list(dict.fromkeys(sources))
-    return response.text, unique_sources
+    return answer, unique_sources
 
 
 # ── UI ────────────────────────────────────────────────────────────────────────

@@ -16,9 +16,9 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 echo "✅  Docker is running"
-echo "⏳  Starting ChromaDB and frontend..."
+echo "⏳  Building and starting ChromaDB and frontend..."
 
-if ! docker compose up -d chromadb frontend > /dev/null 2>&1; then
+if ! docker compose up -d --build chromadb frontend > /dev/null 2>&1; then
     echo "❌  Failed to start services. Check that .env exists and Docker has enough resources."
     echo ""
     exit 1
