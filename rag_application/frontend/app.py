@@ -54,7 +54,7 @@ def ask(collection, question: str) -> tuple[str, list[str]]:
     url = f"{GEMINI_BASE}/models/{CHAT_MODEL}:generateContent"
     body = {
         "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-        "contents": [{"parts": [{"text": build_prompt(question, chunks, sources)}]}],
+        "contents": [{"role": "user", "parts": [{"text": build_prompt(question, chunks, sources)}]}],
     }
     response = requests.post(url, params={"key": GEMINI_API_KEY}, json=body)
     response.raise_for_status()
