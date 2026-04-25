@@ -13,7 +13,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 COLLECTION_NAME = "documents"
-CHAT_MODEL = "deepseek-r1-distill-llama-70b"
+CHAT_MODEL = "qwen/qwen3-32b"
 SUMMARY_MODEL = "llama-3.1-8b-instant"
 TOP_K = 5
 
