@@ -31,6 +31,10 @@ SYSTEM_PROMPT = (
     "the context provided. If the answer is not in the context, say you don't know."
 )
 
+FREE_SYSTEM_PROMPT = (
+    "You are a helpful assistant. Answer the user's question freely using your full capabilities."
+)
+
 REASONING_SUMMARY_PROMPT = (
     "The text below is the internal reasoning a language model used to answer a question. "
     "Rewrite it in 2-3 clear sentences that anyone can understand, without technical jargon. "
@@ -339,9 +343,10 @@ html, body,
 }
 
 /* ── Hide Streamlit chrome ─────────────────────────────────────────── */
-#MainMenu, header, footer,
+#MainMenu, footer,
 [data-testid="stToolbar"],
-[data-testid="stDecoration"] {
+[data-testid="stDecoration"],
+[data-testid="stHeader"] {
     display: none !important;
     visibility: hidden !important;
 }
@@ -521,6 +526,16 @@ html, body,
     display: block !important;
 }
 
+/* ── Mode toggle — purple active track ─────────────────────────────── */
+[data-testid="stToggleSwitch"] [role="switch"] {
+    background-color: rgba(88, 28, 135, 0.3) !important;
+    border-color: rgba(168, 85, 247, 0.3) !important;
+}
+[data-testid="stToggleSwitch"] [role="switch"][aria-checked="true"] {
+    background-color: #A855F7 !important;
+    border-color: #A855F7 !important;
+}
+
 /* ── Custom scrollbar ──────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: #0D0D12; }
@@ -645,16 +660,18 @@ def stream_answer_tokens(
     chunks: list[str],
     sources: list[str],
     thinking_sink: list[str],
+    system_prompt: str = SYSTEM_PROMPT,
 ):
     """Yields answer tokens, buffering the <think> block silently."""
+    user_content = build_prompt(question, chunks, sources) if chunks else question
     response = requests.post(
         GROQ_URL,
         headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
         json={
             "model": CHAT_MODEL,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": build_prompt(question, chunks, sources)},
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
             ],
             "stream": True,
         },
@@ -738,6 +755,7 @@ st.set_page_config(
     page_title="Internal Knowledge Retrieval Agent",
     page_icon="🔮",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 st.markdown(CSS, unsafe_allow_html=True)
 
@@ -766,6 +784,9 @@ st.components.v1.html("""
 """, height=0)
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
+
+if "strict_mode" not in st.session_state:
+    st.session_state["strict_mode"] = True
 
 with st.sidebar:
     st.markdown(
@@ -810,9 +831,47 @@ with st.sidebar:
         f'{msg_count} message{"s" if msg_count != 1 else ""} this session</p>',
         unsafe_allow_html=True,
     )
+    st.divider()
+    _mode_label = "Strict Mode 🔒" if st.session_state.strict_mode else "Free Mode 🔓"
+    strict_mode = st.toggle(_mode_label, key="strict_mode")
+    _mode_desc = (
+        "Answers limited to the knowledge base"
+        if strict_mode
+        else "Answers anything, knowledge base not enforced"
+    )
+    st.markdown(
+        f'<p style="font-size:0.72rem;color:rgba(100,116,139,0.7);margin:0.25rem 0 0.5rem;">'
+        f"{_mode_desc}</p>",
+        unsafe_allow_html=True,
+    )
+    st.divider()
     if st.button("Clear conversation", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
+
+# ── Mode badge — injected above the chat input in the bottom bar ───────────────
+
+_badge_label = "Strict Mode 🔒" if st.session_state.strict_mode else "Free Mode 🔓"
+st.components.v1.html(f"""
+<script>
+(function() {{
+  var bottom = window.parent.document.querySelector('[data-testid="stBottomBlockContainer"]');
+  if (!bottom) return;
+  var badge = window.parent.document.getElementById('_ikra_mode_badge');
+  if (!badge) {{
+    badge = window.parent.document.createElement('div');
+    badge.id = '_ikra_mode_badge';
+    badge.style.cssText = 'text-align:center;padding:6px 0 4px;';
+    bottom.insertBefore(badge, bottom.firstChild);
+  }}
+  badge.innerHTML = '<span style="display:inline-block;padding:3px 14px;'
+    + 'background:rgba(109,40,217,0.3);border:1px solid rgba(168,85,247,0.5);'
+    + 'border-radius:20px;font-size:0.7rem;color:rgba(221,214,254,0.8);'
+    + 'font-family:Inter,system-ui,sans-serif;letter-spacing:0.03em;">'
+    + '{_badge_label}</span>';
+}})();
+</script>
+""", height=0)
 
 # ── App state & collection ─────────────────────────────────────────────────────
 
@@ -854,8 +913,13 @@ if question := st.chat_input("Ask your knowledge base…"):
     with st.chat_message("assistant"):
         response_slot = st.empty()
         try:
-            with st.spinner("Searching knowledge base…"):
-                retrieved_chunks, retrieved_sources = retrieve(collection, question)
+            if st.session_state.get("strict_mode", True):
+                with st.spinner("Searching knowledge base…"):
+                    retrieved_chunks, retrieved_sources = retrieve(collection, question)
+                active_prompt = SYSTEM_PROMPT
+            else:
+                retrieved_chunks, retrieved_sources = [], []
+                active_prompt = FREE_SYSTEM_PROMPT
 
             thinking_sink: list[str] = []
 
@@ -864,7 +928,7 @@ if question := st.chat_input("Ask your knowledge base…"):
 
             full_answer = ""
             for token in stream_answer_tokens(
-                question, retrieved_chunks, retrieved_sources, thinking_sink
+                question, retrieved_chunks, retrieved_sources, thinking_sink, active_prompt
             ):
                 full_answer += token
                 # Streaming cursor gives typewriter feel; markdown re-renders via React diff
