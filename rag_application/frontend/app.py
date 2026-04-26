@@ -75,18 +75,42 @@ CSS = """
 }
 
 /* ── Chat input ───────────────────────────────────────────────────── */
-[data-testid="stChatInput"] textarea {
+[data-baseweb="textarea"] {
     border-radius: 24px !important;
     border: 2px solid #E5E7EB !important;
-    padding: 12px 20px !important;
-    font-size: 0.95rem !important;
     transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
-    resize: none !important;
 }
-[data-testid="stChatInput"] textarea:focus {
+[data-baseweb="textarea"]:focus-within {
     border-color: #6366F1 !important;
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+}
+[data-baseweb="base-input"] {
+    border: none !important;
+    background: transparent !important;
+    padding-left: 16px !important;
+}
+/* Kill the outer red focus ring that Streamlit adds to the wrapper div */
+[data-testid="stChatInput"] > div {
+    border: none !important;
     outline: none !important;
+    box-shadow: none !important;
+}
+[data-testid="stChatInput"] > div:focus-within {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+[data-testid="stChatInputSubmitButton"] {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+[data-testid="stChatInputSubmitButton"] svg {
+    fill: #9CA3AF !important;
+    transition: fill 0.15s ease !important;
+}
+[data-testid="stChatInput"]:focus-within [data-testid="stChatInputSubmitButton"] svg {
+    fill: #6366F1 !important;
 }
 
 /* ── Timestamps ───────────────────────────────────────────────────── */
