@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from datetime import datetime
@@ -99,6 +100,18 @@ CSS = """
 /* ── Sidebar ──────────────────────────────────────────────────────── */
 [data-testid="stSidebar"] {
     background: #F9FAFB;
+    color: #1F2937;
+}
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] li,
+[data-testid="stSidebar"] small,
+[data-testid="stSidebar"] .stMarkdown {
+    color: #1F2937 !important;
 }
 
 /* ── Clear button ─────────────────────────────────────────────────── */
@@ -237,6 +250,78 @@ def ask(
     return answer, unique_sources, reasoning, list(zip(chunks, sources))
 
 
+def stream_answer_tokens(
+    question: str,
+    chunks: list[str],
+    sources: list[str],
+    thinking_sink: list[str],
+):
+    """Yields answer tokens for st.write_stream, buffering the <think> block silently."""
+    response = requests.post(
+        GROQ_URL,
+        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+        json={
+            "model": CHAT_MODEL,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": build_prompt(question, chunks, sources)},
+            ],
+            "stream": True,
+        },
+        stream=True,
+    )
+    if not response.ok:
+        logger.error("Groq stream failed: %s %s", response.status_code, response.reason)
+        raise Exception(f"{response.status_code} {response.reason}: {response.json()}")
+
+    buffer = ""
+    in_think = False
+    think_done = False
+
+    for line in response.iter_lines():
+        if not line:
+            continue
+        text = line.decode("utf-8")
+        if not text.startswith("data: "):
+            continue
+        payload = text[6:]
+        if payload == "[DONE]":
+            break
+        try:
+            token = json.loads(payload)["choices"][0]["delta"].get("content", "")
+        except (KeyError, json.JSONDecodeError):
+            continue
+        if not token:
+            continue
+
+        buffer += token
+
+        if not in_think and not think_done:
+            if "<think>" in buffer:
+                in_think = True
+                buffer = buffer.split("<think>", 1)[1]
+            elif len(buffer) > 15 and "<" not in buffer:
+                think_done = True
+                yield buffer
+                buffer = ""
+        elif in_think:
+            if "</think>" in buffer:
+                think_text, answer_part = buffer.split("</think>", 1)
+                thinking_sink.append(think_text)
+                buffer = answer_part.lstrip("\n")
+                in_think = False
+                think_done = True
+                if buffer:
+                    yield buffer
+                    buffer = ""
+        else:
+            yield buffer
+            buffer = ""
+
+    if buffer:
+        yield buffer
+
+
 def render_message(msg: dict, show_reasoning: bool) -> None:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
@@ -263,13 +348,6 @@ st.markdown(CSS, unsafe_allow_html=True)
 with st.sidebar:
     st.title("Document Q&A")
     st.caption("Ask questions about your documents, powered by AI.")
-    st.divider()
-    st.markdown("**How to use**")
-    st.markdown(
-        "- Add files to `documents/` and run **Add Documents** to ingest them\n"
-        "- Toggle **Thought Train** to see how the model reasoned through your question\n"
-        "- Expand any **Excerpt** to read the exact source text used in the answer"
-    )
     st.divider()
     show_reasoning = st.toggle("Thought Train")
     msg_count = len(st.session_state.get("messages", []))
@@ -315,21 +393,34 @@ if question := st.chat_input("Ask a question about your documents…"):
     st.session_state.messages.append(user_msg)
     render_message(user_msg, show_reasoning)
 
+    answer = ""
+    sources = []
+    reasoning = ""
+    chunk_sources = []
+
     with st.chat_message("assistant"):
-        with st.spinner("Searching documents…"):
-            try:
-                answer, sources, reasoning, chunk_sources = ask(
-                    collection, question, include_reasoning=show_reasoning
-                )
-            except Exception as e:
-                logger.exception("Failed to answer question: %.80s", question)
-                answer = f"Something went wrong: {e}"
-                sources = []
-                reasoning = ""
-                chunk_sources = []
+        try:
+            with st.spinner("Finding relevant context…"):
+                retrieved_chunks, retrieved_sources = retrieve(collection, question)
+
+            thinking_sink: list[str] = []
+            answer = st.write_stream(
+                stream_answer_tokens(question, retrieved_chunks, retrieved_sources, thinking_sink)
+            )
+
+            sources = list(dict.fromkeys(retrieved_sources))
+            chunk_sources = list(zip(retrieved_chunks, retrieved_sources))
+
+            if show_reasoning and thinking_sink:
+                with st.spinner("Summarizing reasoning…"):
+                    reasoning = summarize_thinking("".join(thinking_sink))
+
+        except Exception as e:
+            logger.exception("Failed to answer question: %.80s", question)
+            answer = f"Something went wrong: {e}"
+            st.error(answer)
 
         assistant_ts = datetime.now().strftime("%I:%M %p")
-        st.markdown(answer)
         st.markdown(
             f'<span class="msg-timestamp">{assistant_ts}</span>',
             unsafe_allow_html=True,
