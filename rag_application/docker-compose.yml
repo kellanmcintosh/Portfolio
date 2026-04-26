@@ -2,7 +2,7 @@ services:
   chromadb:
     image: chromadb/chroma:latest
     volumes:
-      - chroma_data:/chroma/chroma
+      - chroma_data:/data
     networks:
       - internal
     restart: always

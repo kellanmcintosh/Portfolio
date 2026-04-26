@@ -41,7 +41,7 @@ CSS = """
 <style>
 /* ── Layout ───────────────────────────────────────────────────────── */
 .main .block-container {
-    max-width: 820px;
+    max-width: 660px !important;
     padding-top: 1.5rem;
     padding-bottom: 6rem;
 }
@@ -366,7 +366,7 @@ def render_message(msg: dict, show_reasoning: bool) -> None:
 
 # ── UI ────────────────────────────────────────────────────────────────────────
 
-st.set_page_config(page_title="Document Q&A", page_icon="💬", layout="wide")
+st.set_page_config(page_title="Document Q&A", page_icon="💬", layout="centered")
 st.markdown(CSS, unsafe_allow_html=True)
 
 with st.sidebar:
@@ -388,14 +388,42 @@ if "messages" not in st.session_state:
 if not st.session_state.messages:
     st.markdown(
         """
-        <div style="text-align:center; padding:4rem 0; color:#9CA3AF;">
-            <div style="font-size:2.8rem; margin-bottom:0.75rem;">💬</div>
-            <p style="font-size:1.05rem; font-weight:600; color:#6B7280; margin:0;">
-                Ask a question to get started
-            </p>
-            <p style="font-size:0.85rem; margin-top:0.4rem;">
-                Your answers are grounded in the documents you have uploaded.
-            </p>
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+        <div style="text-align:center; padding:5rem 0 4rem;">
+            <div style="
+                display:inline-block;
+                width:60px; height:60px;
+                border-radius:50%;
+                background:linear-gradient(135deg,#6366F1,#8B5CF6);
+                box-shadow:0 0 32px rgba(99,102,241,0.45),0 0 72px rgba(139,92,246,0.2);
+                margin-bottom:1.75rem;
+            "></div>
+            <h1 style="
+                font-family:'Space Grotesk',sans-serif;
+                font-size:1.75rem;
+                font-weight:700;
+                letter-spacing:-0.02em;
+                background:linear-gradient(135deg,#6366F1 0%,#8B5CF6 55%,#A78BFA 100%);
+                -webkit-background-clip:text;
+                -webkit-text-fill-color:transparent;
+                background-clip:text;
+                margin:0 0 0.85rem;
+                line-height:1.25;
+            ">Internal Knowledge Retrieval Agent</h1>
+            <div style="
+                width:48px; height:2px;
+                background:linear-gradient(90deg,#6366F1,#8B5CF6);
+                border-radius:1px;
+                margin:0 auto 1.1rem;
+            "></div>
+            <p style="
+                font-family:'Space Grotesk',sans-serif;
+                font-size:0.88rem;
+                color:#9CA3AF;
+                margin:0;
+                letter-spacing:0.02em;
+                font-weight:400;
+            ">Grounded answers from your documents</p>
         </div>
         """,
         unsafe_allow_html=True,
