@@ -1,3 +1,13 @@
+"""Static-asset loaders and parent-document <head> injectors.
+
+`apply_global_styles` is enough for most CSS, but Streamlit's Emotion
+runtime injects styles into <head> AFTER our `st.markdown(<style>)` block
+in the body, so any rule that competes with theirs (notably the layout
+width) loses the cascade. The `inject_*` helpers run a small script that
+appends a <style> element to the parent document's <head> from a
+components iframe — guaranteeing our rules come last and win.
+"""
+
 from pathlib import Path
 
 import streamlit as st

@@ -1,3 +1,10 @@
+"""Streamlit entry point.
+
+Composes the page: applies styles, renders the sidebar, and drives the
+chat loop. All RAG logic lives in `rag`; all UI rendering lives in `ui`.
+This module is intentionally thin — adding behavior here is a smell.
+"""
+
 import logging
 from datetime import datetime
 

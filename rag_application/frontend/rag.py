@@ -1,3 +1,9 @@
+"""RAG pipeline: embedding, retrieval, and generation against Groq.
+
+Pure logic — no Streamlit UI calls aside from `@st.cache_resource` on the
+ChromaDB client (caching avoids reconnecting on every Streamlit rerun).
+"""
+
 import json
 import logging
 
@@ -39,6 +45,7 @@ def embed_query(text: str) -> list[float]:
 
 
 def retrieve(collection, question: str) -> tuple[list[str], list[str]]:
+    """Return (chunks, sources) for the top-K matches. Raises if the collection is empty."""
     count = collection.count()
     if count == 0:
         raise ValueError(
@@ -96,6 +103,12 @@ def summarize_thinking(thinking: str) -> str:
 def ask(
     collection, question: str, include_reasoning: bool = False
 ) -> tuple[str, list[str], str, list[tuple[str, str]]]:
+    """Run a full non-streaming Q&A turn.
+
+    Returns (answer, unique_sources, reasoning_summary, [(chunk, source), ...]).
+    `reasoning_summary` is empty unless `include_reasoning=True` and the model
+    actually emitted a <think> block.
+    """
     chunks, sources = retrieve(collection, question)
     logger.info("Calling Groq (%s)", CHAT_MODEL)
     response = requests.post(
@@ -127,7 +140,16 @@ def stream_answer_tokens(
     thinking_sink: list[str],
     system_prompt: str = SYSTEM_PROMPT,
 ):
-    """Yields answer tokens, buffering the <think> block silently."""
+    """Stream answer tokens from Groq, hiding the <think> block from the UI.
+
+    Qwen3 emits its chain-of-thought wrapped in <think>...</think> at the start
+    of the response. We need to display the answer tokens as they arrive but
+    NOT the reasoning. The state machine below buffers tokens until it can
+    decide whether the stream has entered <think> (drop until </think>, append
+    raw text to `thinking_sink` for later summarization) or skipped it (yield
+    everything from here on). The 15-char / no-`<` heuristic decides early
+    enough to feel responsive without risking a half-matched `<think>` tag.
+    """
     user_content = build_prompt(question, chunks, sources) if chunks else question
     response = requests.post(
         GROQ_URL,

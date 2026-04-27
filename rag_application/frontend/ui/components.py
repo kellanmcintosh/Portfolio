@@ -1,3 +1,10 @@
+"""Streamlit UI components: chat messages, sidebar, and the assistant turn.
+
+Each function renders into the current Streamlit context and (where useful)
+returns the data the entry point needs — e.g. the sidebar's `show_reasoning`
+flag, or the assistant message dict to append to history.
+"""
+
 import logging
 from datetime import datetime
 

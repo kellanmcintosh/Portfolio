@@ -1,3 +1,9 @@
+"""Frontend configuration: environment variables, model IDs, and prompts.
+
+Imported eagerly so missing env vars fail loudly at startup rather than on
+the first user query.
+"""
+
 import os
 
 COLLECTION_NAME = "documents"
