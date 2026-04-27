@@ -9,4 +9,4 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["ingest", "app"]
+known-first-party = ["ingest", "app", "config", "rag", "ui"]

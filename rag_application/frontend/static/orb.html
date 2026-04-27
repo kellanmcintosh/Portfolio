@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #0D0D12; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; }
+  #title {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    bottom: 24px;
+    font-family: 'Inter', system-ui, sans-serif;
+    pointer-events: none;
+  }
+  #title h1 {
+    font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #A78BFA 0%, #C084FC 45%, #DDD6FE 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0 0 0.35rem;
+  }
+  #title p {
+    font-size: 0.78rem;
+    color: rgba(148, 163, 184, 0.55);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+</style>
+</head>
+<body>
+<canvas id="orb"></canvas>
+<div id="title">
+  <h1>Internal Knowledge Retrieval Agent</h1>
+  <p>Ask a question to get started</p>
+</div>
+<script>
+(function () {
+  var canvas = document.getElementById('orb');
+  var ctx = canvas.getContext('2d');
+  var W, H, restX, restY;
+  var orbX, orbY;
+  var velX = 0, velY = 0;
+  var mouseX = null, mouseY = null;
+  var t = 0;
+
+  /* Particles orbiting the orb */
+  var COLORS = ['#A855F7','#C084FC','#7C3AED','#DDD6FE','#9333EA','#E879F9'];
+  var particles = [];
+  for (var i = 0; i < 11; i++) {
+    particles.push({
+      angle: (i / 11) * Math.PI * 2 + Math.random() * 0.4,
+      orbitMult: 1.32 + Math.random() * 0.52,
+      speed: (0.004 + Math.random() * 0.006) * (Math.random() < 0.5 ? 1 : -1),
+      size: 0.75 + Math.random() * 1.4,
+      opacity: 0.28 + Math.random() * 0.48,
+      color: COLORS[i % COLORS.length]
+    });
+  }
+
+  function resize() {
+    var rect = canvas.getBoundingClientRect();
+    W = canvas.width  = rect.width  || 640;
+    H = canvas.height = rect.height || 420;
+    restX = W / 2;
+    restY = H / 2 - 24; /* shift up to leave room for title */
+    if (orbX === undefined) { orbX = restX; orbY = restY; }
+  }
+
+  function lerp(a, b, f) { return a + (b - a) * f; }
+
+  /* Layered-sine wobble — never perfectly circular */
+  function wobbleR(a, R, t) {
+    return R
+      + 2.5 * Math.sin(a * 3  + t * 1.40)
+      + 1.75 * Math.sin(a * 7  - t * 2.15)
+      + 1.0 * Math.sin(a * 13 + t * 0.90)
+      + 0.5 * Math.sin(a * 19 - t * 3.10);
+  }
+
+  canvas.addEventListener('mousemove', function (e) {
+    var r = canvas.getBoundingClientRect();
+    mouseX = e.clientX - r.left;
+    mouseY = e.clientY - r.top;
+  });
+  canvas.addEventListener('mouseleave', function () {
+    mouseX = null; mouseY = null;
+  });
+  window.addEventListener('resize', resize);
+
+  function draw() {
+    t += 0.016;
+    requestAnimationFrame(draw);
+
+    /* Breathing: ~3 s sine */
+    var breathe = 1 + 0.075 * Math.sin(t * (2 * Math.PI / 3));
+    /* Responsive base radius — 0.0925 = 0.185 * 0.5 */
+    var R = Math.min(W, H) * 0.0925;
+
+    /* Lazy cursor follow — square region, spring-back when away */
+    if (mouseX !== null) {
+      /* Horizontal: square clamp so X travel never exceeds the shorter axis */
+      var halfSq = Math.min(W, H) * 0.5;
+      var tgtX = restX + Math.max(-halfSq, Math.min(halfSq, mouseX - restX));
+      /* Vertical: tight ±20 px clamp — enough to feel alive, never clips */
+      var tgtY = restY + Math.max(-20, Math.min(20, mouseY - restY));
+      orbX = lerp(orbX, tgtX, 0.06);
+      orbY = lerp(orbY, tgtY, 0.06);
+      velX = 0; velY = 0;
+    } else {
+      velX = (velX + (restX - orbX) * 0.08) * 0.72;
+      velY = (velY + (restY - orbY) * 0.08) * 0.72;
+      orbX += velX;
+      orbY += velY;
+    }
+
+    /* Fix 2: clamp drawn position — body + outermost glow (R*3.0) never clips edge */
+    var buffer = R * 3.2;
+    var drawX = Math.max(buffer, Math.min(W - buffer, orbX));
+    var drawY = Math.max(buffer, Math.min(H - buffer, orbY));
+
+    /* Stretch uses drawn position so distortion matches what the eye sees */
+    var dx = drawX - restX, dy = drawY - restY;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    var pullAngle = Math.atan2(dy, dx);
+    var ts = Math.min(dist / (R * 1.6), 1);   /* stretch factor 0→1 */
+    var sX = 1 + ts * 0.60;                    /* 1.0 → 1.60 */
+    var sY = 1 - ts * 0.30;                    /* 1.0 → 0.70 */
+
+    ctx.clearRect(0, 0, W, H);
+
+    /* ── Bloom glow rings ─────────────────────────────────────────── */
+    var glows = [
+      { r: R * 3.0, a0: 0.055 },
+      { r: R * 2.2, a0: 0.10  },
+      { r: R * 1.7, a0: 0.17  }
+    ];
+    for (var gi = 0; gi < glows.length; gi++) {
+      var g = glows[gi];
+      ctx.save();
+      ctx.translate(drawX, drawY);
+      ctx.rotate(pullAngle);
+      ctx.scale(sX * breathe, sY * breathe);
+      ctx.rotate(-pullAngle);
+      var gr = ctx.createRadialGradient(0, 0, R * 0.2, 0, 0, g.r);
+      gr.addColorStop(0,   'rgba(168,85,247,' + g.a0 + ')');
+      gr.addColorStop(0.5, 'rgba(124,58,237,' + (g.a0 * 0.4) + ')');
+      gr.addColorStop(1,   'rgba(107,33,168,0)');
+      ctx.beginPath();
+      ctx.arc(0, 0, g.r, 0, Math.PI * 2);
+      ctx.fillStyle = gr;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    /* ── Orb body ─────────────────────────────────────────────────── */
+    ctx.save();
+    ctx.translate(drawX, drawY);
+    ctx.rotate(pullAngle);
+    ctx.scale(sX * breathe, sY * breathe);
+    ctx.rotate(-pullAngle);
+
+    /* Wobbled silhouette */
+    var SEG = 96;
+    ctx.beginPath();
+    for (var j = 0; j <= SEG; j++) {
+      var a = (j / SEG) * Math.PI * 2;
+      var r = wobbleR(a, R, t);
+      if (j === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+      else         ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    ctx.closePath();
+
+    /* Main radial gradient — off-centre highlight for 3-D depth */
+    var mg = ctx.createRadialGradient(-R * 0.28, -R * 0.28, 0, 0, 0, R * 1.05);
+    mg.addColorStop(0.00, '#EDE9FE');
+    mg.addColorStop(0.15, '#C084FC');
+    mg.addColorStop(0.40, '#A855F7');
+    mg.addColorStop(0.65, '#7C3AED');
+    mg.addColorStop(0.82, '#6B21A8');
+    mg.addColorStop(1.00, '#3B0764');
+    ctx.fillStyle = mg;
+    ctx.fill();
+
+    /* Inner pink glow for warmth */
+    var ig = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.6);
+    ig.addColorStop(0, 'rgba(232,121,249,0.32)');
+    ig.addColorStop(1, 'rgba(168,85,247,0)');
+    ctx.beginPath();
+    for (var k = 0; k <= SEG; k++) {
+      var a2 = (k / SEG) * Math.PI * 2;
+      var r2 = wobbleR(a2, R, t);
+      if (k === 0) ctx.moveTo(Math.cos(a2) * r2, Math.sin(a2) * r2);
+      else         ctx.lineTo(Math.cos(a2) * r2, Math.sin(a2) * r2);
+    }
+    ctx.closePath();
+    ctx.fillStyle = ig;
+    ctx.fill();
+
+    /* Surface sheen — shifts with pull direction */
+    var sheen = 0.20 + ts * 0.08;
+    var sg = ctx.createRadialGradient(-R*0.32,-R*0.45, 0, -R*0.12,-R*0.2, R*0.78);
+    sg.addColorStop(0,    'rgba(255,255,255,' + sheen + ')');
+    sg.addColorStop(0.55, 'rgba(255,255,255,0.03)');
+    sg.addColorStop(1,    'rgba(255,255,255,0)');
+    ctx.beginPath();
+    for (var m = 0; m <= SEG; m++) {
+      var a3 = (m / SEG) * Math.PI * 2;
+      var r3 = wobbleR(a3, R, t);
+      if (m === 0) ctx.moveTo(Math.cos(a3) * r3, Math.sin(a3) * r3);
+      else         ctx.lineTo(Math.cos(a3) * r3, Math.sin(a3) * r3);
+    }
+    ctx.closePath();
+    ctx.fillStyle = sg;
+    ctx.fill();
+
+    ctx.restore();
+
+    /* ── Particles ────────────────────────────────────────────────── */
+    for (var pi = 0; pi < particles.length; pi++) {
+      var p = particles[pi];
+      p.angle += p.speed;
+      var pr  = R * p.orbitMult * breathe;
+      var px  = drawX + Math.cos(p.angle) * pr * sX;
+      var py  = drawY + Math.sin(p.angle) * pr * sY;
+      var pAlpha = p.opacity * (0.6 + 0.4 * Math.sin(t * 1.5 + p.angle));
+
+      /* Dot */
+      ctx.beginPath();
+      ctx.arc(px, py, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = pAlpha;
+      ctx.fill();
+
+      /* Soft glow halo around each particle */
+      var halo = ctx.createRadialGradient(px, py, 0, px, py, p.size * 4);
+      halo.addColorStop(0, 'rgba(168,85,247,' + (pAlpha * 0.5) + ')');
+      halo.addColorStop(1, 'rgba(168,85,247,0)');
+      ctx.beginPath();
+      ctx.arc(px, py, p.size * 4, 0, Math.PI * 2);
+      ctx.fillStyle = halo;
+      ctx.fill();
+
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  resize();
+  draw();
+})();
+</script>
+</body>
+</html>

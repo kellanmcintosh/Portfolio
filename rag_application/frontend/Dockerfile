@@ -11,7 +11,9 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 # Never phone home to HuggingFace at runtime — use the model baked above
 ENV HF_HUB_OFFLINE=1
 
-COPY app.py .
+COPY app.py config.py rag.py ./
+COPY ui ./ui
+COPY static ./static
 
 EXPOSE 8501
 
