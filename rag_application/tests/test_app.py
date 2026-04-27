@@ -1,22 +1,23 @@
-from unittest.mock import patch, MagicMock
-import app
+from unittest.mock import MagicMock, patch
+
+import rag
 
 
 class TestBuildPrompt:
     def test_contains_question(self):
-        prompt = app.build_prompt("What is the policy?", ["some context"], ["doc.pdf"])
+        prompt = rag.build_prompt("What is the policy?", ["some context"], ["doc.pdf"])
         assert "What is the policy?" in prompt
 
     def test_contains_chunk_text(self):
-        prompt = app.build_prompt("Q?", ["The answer is 42"], ["doc.pdf"])
+        prompt = rag.build_prompt("Q?", ["The answer is 42"], ["doc.pdf"])
         assert "The answer is 42" in prompt
 
     def test_contains_source_label(self):
-        prompt = app.build_prompt("Q?", ["chunk"], ["report.pdf"])
+        prompt = rag.build_prompt("Q?", ["chunk"], ["report.pdf"])
         assert "report.pdf" in prompt
 
     def test_multiple_chunks_all_present(self):
-        prompt = app.build_prompt("Q?", ["chunk A", "chunk B"], ["a.pdf", "b.pdf"])
+        prompt = rag.build_prompt("Q?", ["chunk A", "chunk B"], ["a.pdf", "b.pdf"])
         assert "chunk A" in prompt
         assert "chunk B" in prompt
         assert "a.pdf" in prompt
@@ -30,15 +31,15 @@ class TestEmbedQuery:
         return result
 
     def test_returns_vector(self):
-        with patch.object(app, "embed_model") as mock_model:
+        with patch.object(rag, "embed_model") as mock_model:
             mock_model.encode.return_value = self._mock_encode([0.1, 0.2, 0.3])
-            result = app.embed_query("What is X?")
+            result = rag.embed_query("What is X?")
         assert result == [0.1, 0.2, 0.3]
 
     def test_uses_normalized_embeddings(self):
-        with patch.object(app, "embed_model") as mock_model:
+        with patch.object(rag, "embed_model") as mock_model:
             mock_model.encode.return_value = self._mock_encode([0.1])
-            app.embed_query("test")
+            rag.embed_query("test")
             kwargs = mock_model.encode.call_args.kwargs
             assert kwargs.get("normalize_embeddings") is True
 
@@ -46,24 +47,24 @@ class TestEmbedQuery:
 class TestParseResponse:
     def test_extracts_thinking_and_answer(self):
         content = "<think>reasoning here</think>The answer is 42."
-        thinking, answer = app.parse_response(content)
+        thinking, answer = rag.parse_response(content)
         assert thinking == "reasoning here"
         assert answer == "The answer is 42."
 
     def test_no_think_tags_returns_empty_thinking(self):
         content = "Direct answer without reasoning."
-        thinking, answer = app.parse_response(content)
+        thinking, answer = rag.parse_response(content)
         assert thinking == ""
         assert answer == "Direct answer without reasoning."
 
     def test_strips_whitespace_from_thinking(self):
         content = "<think>\n  reasoning  \n</think>Answer."
-        thinking, _ = app.parse_response(content)
+        thinking, _ = rag.parse_response(content)
         assert thinking == "reasoning"
 
     def test_answer_stripped_of_leading_whitespace(self):
         content = "<think>reasoning</think>\n\nThe answer."
-        _, answer = app.parse_response(content)
+        _, answer = rag.parse_response(content)
         assert answer == "The answer."
 
 
@@ -75,23 +76,23 @@ class TestSummarizeThinking:
         return mock
 
     def test_returns_summary_text(self):
-        with patch("app.requests.post", return_value=self._mock_response("Plain explanation.")):
-            result = app.summarize_thinking("complex internal reasoning...")
+        with patch("rag.requests.post", return_value=self._mock_response("Plain explanation.")):
+            result = rag.summarize_thinking("complex internal reasoning...")
         assert result == "Plain explanation."
 
     def test_returns_empty_string_on_api_failure(self):
         mock = MagicMock()
         mock.ok = False
         mock.status_code = 500
-        with patch("app.requests.post", return_value=mock):
-            result = app.summarize_thinking("reasoning")
+        with patch("rag.requests.post", return_value=mock):
+            result = rag.summarize_thinking("reasoning")
         assert result == ""
 
 
 class TestRetrieve:
     def _mock_collection(self, chunks, sources, count=None):
         col = MagicMock()
-        col.count.return_value = count if count is not None else max(len(chunks), app.TOP_K)
+        col.count.return_value = count if count is not None else max(len(chunks), rag.TOP_K)
         col.query.return_value = {
             "documents": [chunks],
             "metadatas": [[{"source": s, "chunk_index": i} for i, s in enumerate(sources)]],
@@ -100,22 +101,22 @@ class TestRetrieve:
 
     def test_returns_chunks_and_sources(self):
         col = self._mock_collection(["chunk one", "chunk two"], ["a.pdf", "b.pdf"])
-        with patch.object(app, "embed_query", return_value=[0.1, 0.2]):
-            chunks, sources = app.retrieve(col, "question")
+        with patch.object(rag, "embed_query", return_value=[0.1, 0.2]):
+            chunks, sources = rag.retrieve(col, "question")
         assert chunks == ["chunk one", "chunk two"]
         assert sources == ["a.pdf", "b.pdf"]
 
     def test_queries_top_k_results(self):
-        col = self._mock_collection([], [], count=app.TOP_K)
-        with patch.object(app, "embed_query", return_value=[0.1]):
-            app.retrieve(col, "q")
-        assert col.query.call_args.kwargs["n_results"] == app.TOP_K
+        col = self._mock_collection([], [], count=rag.TOP_K)
+        with patch.object(rag, "embed_query", return_value=[0.1]):
+            rag.retrieve(col, "q")
+        assert col.query.call_args.kwargs["n_results"] == rag.TOP_K
 
 
 class TestAsk:
     def _mock_collection(self, chunks, sources):
         col = MagicMock()
-        col.count.return_value = max(len(chunks), app.TOP_K)
+        col.count.return_value = max(len(chunks), rag.TOP_K)
         col.query.return_value = {
             "documents": [chunks],
             "metadatas": [[{"source": s, "chunk_index": i} for i, s in enumerate(sources)]],
@@ -130,58 +131,58 @@ class TestAsk:
 
     def test_returns_model_answer(self):
         col = self._mock_collection(["context"], ["doc.pdf"])
-        with patch.object(app, "embed_query", return_value=[0.1]), \
-             patch("app.requests.post", return_value=self._mock_response("42 is the answer.")):
-            answer, *_ = app.ask(col, "What is the answer?")
+        with patch.object(rag, "embed_query", return_value=[0.1]), \
+             patch("rag.requests.post", return_value=self._mock_response("42 is the answer.")):
+            answer, *_ = rag.ask(col, "What is the answer?")
         assert answer == "42 is the answer."
 
     def test_deduplicates_sources(self):
         col = self._mock_collection(["c1", "c2", "c3"], ["doc.pdf", "doc.pdf", "other.pdf"])
-        with patch.object(app, "embed_query", return_value=[0.1]), \
-             patch("app.requests.post", return_value=self._mock_response("answer")):
-            _, sources, *_ = app.ask(col, "question")
+        with patch.object(rag, "embed_query", return_value=[0.1]), \
+             patch("rag.requests.post", return_value=self._mock_response("answer")):
+            _, sources, *_ = rag.ask(col, "question")
         assert sources.count("doc.pdf") == 1
         assert "other.pdf" in sources
 
     def test_returns_chunk_sources_pairs(self):
         col = self._mock_collection(["chunk one", "chunk two"], ["a.pdf", "b.pdf"])
-        with patch.object(app, "embed_query", return_value=[0.1]), \
-             patch("app.requests.post", return_value=self._mock_response("answer")):
-            *_, chunk_sources = app.ask(col, "question")
+        with patch.object(rag, "embed_query", return_value=[0.1]), \
+             patch("rag.requests.post", return_value=self._mock_response("answer")):
+            *_, chunk_sources = rag.ask(col, "question")
         assert ("chunk one", "a.pdf") in chunk_sources
         assert ("chunk two", "b.pdf") in chunk_sources
 
     def test_no_reasoning_by_default(self):
         col = self._mock_collection(["context"], ["doc.pdf"])
-        with patch.object(app, "embed_query", return_value=[0.1]), \
-             patch("app.requests.post", return_value=self._mock_response("<think>thinking</think>answer")):
-            _, _, reasoning, _ = app.ask(col, "question")
+        with patch.object(rag, "embed_query", return_value=[0.1]), \
+             patch("rag.requests.post", return_value=self._mock_response("<think>thinking</think>answer")):
+            _, _, reasoning, _ = rag.ask(col, "question")
         assert reasoning == ""
 
     def test_returns_reasoning_when_requested(self):
         col = self._mock_collection(["context"], ["doc.pdf"])
-        with patch.object(app, "embed_query", return_value=[0.1]), \
-             patch("app.requests.post") as mock_post:
+        with patch.object(rag, "embed_query", return_value=[0.1]), \
+             patch("rag.requests.post") as mock_post:
             mock_post.side_effect = [
                 self._mock_response("<think>I found the answer in context.</think>The answer."),
                 self._mock_response("Plain explanation."),
             ]
-            _, _, reasoning, _ = app.ask(col, "question", include_reasoning=True)
+            _, _, reasoning, _ = rag.ask(col, "question", include_reasoning=True)
         assert reasoning == "Plain explanation."
 
     def test_sends_bearer_auth(self):
         col = self._mock_collection(["context"], ["doc.pdf"])
-        with patch.object(app, "embed_query", return_value=[0.1]), \
-             patch("app.requests.post", return_value=self._mock_response("answer")) as mock_post:
-            app.ask(col, "question")
+        with patch.object(rag, "embed_query", return_value=[0.1]), \
+             patch("rag.requests.post", return_value=self._mock_response("answer")) as mock_post:
+            rag.ask(col, "question")
             headers = mock_post.call_args.kwargs["headers"]
             assert headers["Authorization"].startswith("Bearer ")
 
     def test_sends_system_message(self):
         col = self._mock_collection(["context"], ["doc.pdf"])
-        with patch.object(app, "embed_query", return_value=[0.1]), \
-             patch("app.requests.post", return_value=self._mock_response("answer")) as mock_post:
-            app.ask(col, "question")
+        with patch.object(rag, "embed_query", return_value=[0.1]), \
+             patch("rag.requests.post", return_value=self._mock_response("answer")) as mock_post:
+            rag.ask(col, "question")
             messages = mock_post.call_args.kwargs["json"]["messages"]
             roles = [m["role"] for m in messages]
             assert "system" in roles

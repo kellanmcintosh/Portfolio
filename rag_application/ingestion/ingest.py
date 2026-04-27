@@ -1,12 +1,19 @@
+"""One-shot ingestion job: documents/ → markdown → chunks → embeddings → ChromaDB.
+
+Run via `scripts/add-documents.command`. Idempotent: re-running with the same
+files updates rather than duplicates them (chunk IDs are derived from filename
++ index, and the collection is upserted, not appended).
+"""
+
 import logging
 import os
 import sys
 from pathlib import Path
 
-import tiktoken
 import chromadb
-from sentence_transformers import SentenceTransformer
+import tiktoken
 from docling.document_converter import DocumentConverter
+from sentence_transformers import SentenceTransformer
 
 logging.basicConfig(
     level=logging.INFO,

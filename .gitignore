@@ -2,10 +2,6 @@
 rag_application/documents/*
 !rag_application/documents/.gitkeep
 
-# Claude Code
-.claude/
-CLAUDE.md
-
 # macOS
 .DS_Store
 .AppleDouble

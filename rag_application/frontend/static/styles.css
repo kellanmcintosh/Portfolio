@@ -1,0 +1,224 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+/* ── Page background ───────────────────────────────────────────────── */
+html, body,
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+.main {
+    background: #0D0D12 !important;
+    color: #E2E8F0 !important;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+/* ── Hide Streamlit chrome ─────────────────────────────────────────── */
+#MainMenu, footer,
+[data-testid="stToolbar"],
+[data-testid="stDecoration"],
+[data-testid="stHeader"] {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* ── Main layout ───────────────────────────────────────────────────── */
+/* Emotion injects into <head> after us, so this is belt-and-suspenders;
+   the real override is the JS head-injection below. */
+[data-testid="stMainBlockContainer"],
+[data-testid="stBottomBlockContainer"] {
+    max-width: 760px !important;
+    width: 760px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-top: 0 !important;
+    padding-bottom: 6rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+
+/* ── Message fade-in ───────────────────────────────────────────────── */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0);   }
+}
+
+[data-testid="stChatMessage"] {
+    animation: fadeInUp 0.28s ease-out;
+    margin-bottom: 8px !important;
+    padding: 8px 12px !important;
+    border-radius: 18px !important;
+}
+
+/* ── User bubble — right-aligned, deep purple ──────────────────────── */
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {
+    background: rgba(109, 40, 217, 0.35) !important;
+    margin-left: 12% !important;
+    margin-right: 0 !important;
+    border-radius: 18px 18px 4px 18px !important;
+    border: 1px solid rgba(168, 85, 247, 0.4) !important;
+    box-shadow: 0 0 12px rgba(168, 85, 247, 0.2) !important;
+    backdrop-filter: blur(8px) !important;
+}
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) p,
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) li,
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) code,
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) strong {
+    color: #F3E8FF !important;
+}
+
+/* ── Assistant bubble — left-aligned, near-black ───────────────────── */
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
+    background: rgba(15, 10, 30, 0.7) !important;
+    margin-right: 12% !important;
+    margin-left: 0 !important;
+    border-radius: 18px 18px 18px 4px !important;
+    border: 1px solid rgba(88, 28, 135, 0.3) !important;
+    box-shadow: 0 0 8px rgba(88, 28, 135, 0.15) !important;
+    backdrop-filter: blur(8px) !important;
+}
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) p,
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) li,
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) code,
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) strong {
+    color: #CBD5E1 !important;
+}
+
+/* ── Timestamp ─────────────────────────────────────────────────────── */
+.msg-timestamp {
+    font-size: 0.67rem;
+    color: rgba(167, 139, 250, 0.5);
+    display: block;
+    margin-top: 5px;
+}
+
+/* ── Chat input ────────────────────────────────────────────────────── */
+[data-baseweb="textarea"] {
+    background: #13131A !important;
+    border: 1px solid rgba(168, 85, 247, 0.25) !important;
+    border-radius: 24px !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+[data-baseweb="textarea"]:focus-within {
+    border-color: #A855F7 !important;
+    box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.28) !important;
+}
+[data-baseweb="base-input"] {
+    background: transparent !important;
+    border: none !important;
+    padding-left: 16px !important;
+}
+[data-baseweb="base-input"] textarea {
+    color: #E2E8F0 !important;
+    caret-color: #A855F7 !important;
+}
+[data-baseweb="base-input"] textarea::placeholder {
+    color: rgba(148, 163, 184, 0.4) !important;
+}
+[data-testid="stChatInput"] > div {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+[data-testid="stChatInput"] > div:focus-within {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+[data-testid="stChatInputSubmitButton"] {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+[data-testid="stChatInputSubmitButton"] svg {
+    fill: rgba(148, 163, 184, 0.4) !important;
+    transition: fill 0.15s ease !important;
+}
+[data-testid="stChatInput"]:focus-within [data-testid="stChatInputSubmitButton"] svg {
+    fill: #A855F7 !important;
+}
+
+/* ── Expanders ─────────────────────────────────────────────────────── */
+[data-testid="stExpander"] {
+    background: rgba(168, 85, 247, 0.05) !important;
+    border: 1px solid rgba(168, 85, 247, 0.15) !important;
+    border-radius: 10px !important;
+}
+[data-testid="stExpander"] summary,
+[data-testid="stExpander"] summary span {
+    color: #A855F7 !important;
+}
+[data-testid="stExpander"] .stMarkdown * {
+    color: #CBD5E1 !important;
+}
+
+/* ── Source captions ───────────────────────────────────────────────── */
+[data-testid="stCaptionContainer"] * {
+    color: rgba(100, 116, 139, 0.85) !important;
+}
+
+/* ── Sidebar ───────────────────────────────────────────────────────── */
+[data-testid="stSidebar"] {
+    background: #0D0D12 !important;
+    border-left: 3px solid #7C3AED !important;
+    border-right: 1px solid rgba(168, 85, 247, 0.12) !important;
+}
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] li,
+[data-testid="stSidebar"] small,
+[data-testid="stSidebar"] .stMarkdown {
+    color: #E2E8F0 !important;
+}
+[data-testid="stSidebar"] .stButton button {
+    border: 1px solid rgba(168, 85, 247, 0.35) !important;
+    background: rgba(168, 85, 247, 0.08) !important;
+    color: #C084FC !important;
+    border-radius: 8px !important;
+    font-size: 0.88rem !important;
+    transition: all 0.15s ease !important;
+}
+[data-testid="stSidebar"] .stButton button:hover {
+    background: rgba(168, 85, 247, 0.2) !important;
+    border-color: #A855F7 !important;
+    color: #EDE9FE !important;
+}
+[data-testid="stSidebar"] hr {
+    border-color: rgba(168, 85, 247, 0.15) !important;
+}
+
+/* ── Iframe (orb component) ────────────────────────────────────────── */
+[data-testid="stCustomComponentV1"] iframe {
+    border: none !important;
+    display: block !important;
+}
+
+/* ── Mode toggle — purple active track ─────────────────────────────── */
+[data-testid="stToggleSwitch"] [role="switch"] {
+    background-color: rgba(88, 28, 135, 0.3) !important;
+    border-color: rgba(168, 85, 247, 0.3) !important;
+}
+[data-testid="stToggleSwitch"] [role="switch"][aria-checked="true"] {
+    background-color: #A855F7 !important;
+    border-color: #A855F7 !important;
+}
+
+/* ── Custom scrollbar ──────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #0D0D12; }
+::-webkit-scrollbar-thumb { background: #3B0764; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #7C3AED; }
+
+/* ── Mobile ────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .main .block-container {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]),
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+}

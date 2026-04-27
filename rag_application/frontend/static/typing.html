@@ -1,0 +1,19 @@
+<style>
+@keyframes dot-bounce {
+  0%, 60%, 100% { transform: translateY(0);    opacity: 0.35; }
+  30%            { transform: translateY(-6px); opacity: 1;    }
+}
+.td {
+  display: inline-block;
+  width: 8px; height: 8px;
+  background: #A855F7;
+  border-radius: 50%;
+  margin: 0 3px;
+  animation: dot-bounce 1.2s ease-in-out infinite;
+}
+.td:nth-child(2) { animation-delay: 0.18s; }
+.td:nth-child(3) { animation-delay: 0.36s; }
+</style>
+<div style="padding: 4px 2px 2px;">
+  <span class="td"></span><span class="td"></span><span class="td"></span>
+</div>
