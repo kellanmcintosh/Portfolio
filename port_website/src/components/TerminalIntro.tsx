@@ -3,21 +3,26 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type LineKind = "cmd" | "out" | "blank";
+type LineKind = "cmd" | "prompt" | "out" | "blank";
 type ScriptLine = { kind: LineKind; text: string };
 
 const SCRIPT: ScriptLine[] = [
-  { kind: "cmd", text: "$ whoami" },
-  { kind: "out", text: "> kellan_mcintosh" },
-  { kind: "blank", text: "" },
-  { kind: "cmd", text: "$ cat about.txt" },
-  { kind: "out", text: "> Data Science & ML Engineer" },
-  { kind: "out", text: "> UMass Amherst" },
-  { kind: "out", text: "> Building models that actually ship." },
-  { kind: "blank", text: "" },
-  { kind: "cmd", text: "$ ./launch_portfolio.sh" },
-  { kind: "out", text: "> Initializing..." },
-  { kind: "out", text: "> Done." },
+  { kind: "cmd",    text: "$ python3" },
+  { kind: "prompt", text: ">>> import pandas as pd" },
+  { kind: "prompt", text: ">>> df = pd.read_csv('credit_risk.csv')" },
+  { kind: "prompt", text: ">>> df.shape" },
+  { kind: "out",    text: "(10000, 24)" },
+  { kind: "blank",  text: "" },
+  { kind: "prompt", text: ">>> from sklearn.ensemble import GradientBoostingClassifier" },
+  { kind: "prompt", text: ">>> model = GradientBoostingClassifier(n_estimators=200)" },
+  { kind: "prompt", text: ">>> model.fit(X_train, y_train)" },
+  { kind: "out",    text: "[Parallel(n_jobs=1)]: Done 200 out of 200..." },
+  { kind: "blank",  text: "" },
+  { kind: "prompt", text: ">>> score = model.score(X_test, y_test)" },
+  { kind: "prompt", text: ">>> print(f\"ROC-AUC: {score:.4f}\")" },
+  { kind: "out",    text: "ROC-AUC: 0.9421" },
+  { kind: "blank",  text: "" },
+  { kind: "prompt", text: ">>> # Loading portfolio..." },
 ];
 
 export default function TerminalIntro() {
@@ -65,13 +70,19 @@ export default function TerminalIntro() {
       if (charIdx < line.text.length) {
         charIdx++;
         setActiveText(line.text.slice(0, charIdx));
-        typingTimer.current = setTimeout(tick, 40 + Math.random() * 25);
+        // Output lines type faster than prompt lines
+        const delay = line.kind === "out"
+          ? 20 + Math.random() * 15
+          : 40 + Math.random() * 25;
+        typingTimer.current = setTimeout(tick, delay);
       } else {
         setCompletedLines((prev) => [...prev, line]);
         setActiveText("");
         lineIdx++;
         charIdx = 0;
-        typingTimer.current = setTimeout(tick, line.kind === "cmd" ? 350 : 120);
+        // Pause longer after prompt lines (simulates thinking/executing)
+        const pause = line.kind === "prompt" ? 450 : line.kind === "cmd" ? 350 : 120;
+        typingTimer.current = setTimeout(tick, pause);
       }
     };
 
@@ -83,21 +94,29 @@ export default function TerminalIntro() {
     };
   }, [dismiss]);
 
-  // Current script line being typed (completedLines.length tracks lineIdx)
   const currentLine = SCRIPT[completedLines.length];
+
+  const lineColor = (kind: LineKind) => {
+    if (kind === "cmd" || kind === "prompt") return "#B8860B";
+    return "#A3A3A3";
+  };
 
   return (
     <AnimatePresence>
       {visible && (
         <motion.div
-          className="fixed inset-0 z-[100] bg-background font-mono"
+          className="fixed inset-0 z-[100] font-mono"
+          style={{ backgroundColor: "#0F0F0F" }}
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, filter: "blur(10px)", scale: 1.03, y: -16 }}
           transition={{ duration: 0.55, ease: "easeInOut" }}
         >
           <button
             onClick={dismiss}
-            className="absolute right-6 top-6 text-sm text-text-secondary transition-colors hover:text-accent"
+            className="absolute right-6 top-6 text-sm transition-colors"
+            style={{ color: "#5C5A54" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#B8860B")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#5C5A54")}
           >
             Skip →
           </button>
@@ -109,9 +128,8 @@ export default function TerminalIntro() {
               ) : (
                 <p
                   key={i}
-                  className={`leading-7 ${
-                    line.kind === "cmd" ? "text-accent" : "text-text-secondary"
-                  }`}
+                  className="leading-7"
+                  style={{ color: lineColor(line.kind) }}
                 >
                   {line.text}
                 </p>
@@ -120,9 +138,8 @@ export default function TerminalIntro() {
 
             {activeText && (
               <p
-                className={`leading-7 ${
-                  currentLine?.kind === "cmd" ? "text-accent" : "text-text-secondary"
-                }`}
+                className="leading-7"
+                style={{ color: lineColor(currentLine?.kind ?? "out") }}
               >
                 {activeText}
                 <span className="animate-pulse">▊</span>
