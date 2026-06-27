@@ -58,7 +58,7 @@ export default function ContactSection() {
           viewport={{ once: true, margin: "-10%" }}
           transition={spring}
         >
-          <h2 className="mb-4 text-3xl font-bold text-text-primary">Contact</h2>
+          <h2 className="mb-4 font-playfair text-5xl font-bold text-text-primary">Contact</h2>
           <p className="mb-10 text-text-secondary">
             Let&apos;s connect — whether it&apos;s about a role, a project, or just ML.
           </p>
@@ -71,7 +71,7 @@ export default function ContactSection() {
                   ? { target: "_blank", rel: "noopener noreferrer" }
                   : {})}
                 whileHover={{ scale: 1.06, transition: { duration: 0.2 } }}
-                className="flex items-center gap-3 rounded-xl border border-border bg-surface px-6 py-4 font-medium text-text-primary transition-all duration-200 hover:border-accent hover:text-accent hover:shadow-[0_0_24px_rgba(0,217,255,0.2)]"
+                className="flex items-center gap-3 rounded-xl border border-border bg-surface px-6 py-4 font-medium text-text-primary transition-all duration-200 hover:border-accent hover:text-accent"
               >
                 {icon}
                 <span>{label}</span>

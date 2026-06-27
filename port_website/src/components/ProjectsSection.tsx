@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, type Variants } from "framer-motion";
+import { motion } from "framer-motion";
 
 type Project = {
   name: string;
@@ -34,58 +34,56 @@ const PROJECTS: Project[] = [
   },
 ];
 
-const cardContainer: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.08 } },
-};
+const easeOutExpo = [0.16, 1, 0.3, 1] as const;
 
-const cardItem: Variants = {
-  hidden: { opacity: 0, y: 24 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring", stiffness: 260, damping: 20 },
-  },
-};
+function ProjectRow({ project, index }: { project: Project; index: number }) {
+  const num = String(index + 1).padStart(2, "0");
 
-function ProjectCard({ project }: { project: Project }) {
   return (
-    <motion.a
-      href={project.href}
-      variants={cardItem}
-      whileHover={{ y: -6, transition: { duration: 0.2 } }}
-      className="group relative flex min-h-48 flex-col rounded-xl border border-border bg-surface p-6 transition-all duration-200 hover:border-accent hover:shadow-[0_0_28px_rgba(0,217,255,0.12)]"
-    >
-      {project.comingSoon && (
-        <span className="absolute right-4 top-4 rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent">
-          Coming Soon
+    <div className="flex flex-col gap-6 border-t border-border py-12 md:flex-row md:gap-12 md:items-start">
+      <motion.div
+        initial={{ opacity: 0, x: -30 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        viewport={{ once: true, margin: "-10%" }}
+        transition={{ duration: 0.7, ease: easeOutExpo }}
+        className="md:w-2/5 md:shrink-0"
+      >
+        <span className="font-playfair text-7xl font-bold leading-none text-border select-none">
+          {num}
         </span>
-      )}
+      </motion.div>
 
-      <span className="absolute bottom-4 right-4 translate-x-1 text-accent opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100">
-        →
-      </span>
-
-      <h3 className="mb-2 pr-24 text-lg font-semibold text-text-primary">
-        {project.name}
-      </h3>
-      <p className="mb-4 flex-1 text-sm text-text-secondary">
-        {project.description}
-      </p>
-
-      {project.stack.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {project.stack.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full border border-accent/20 bg-accent/5 px-2.5 py-0.5 text-xs text-accent"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
-    </motion.a>
+      <motion.div
+        initial={{ opacity: 0, x: 30 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        viewport={{ once: true, margin: "-10%" }}
+        transition={{ duration: 0.7, ease: easeOutExpo, delay: 0.15 }}
+        className="flex-1"
+      >
+        <h3 className="font-playfair text-3xl font-bold text-text-primary mb-3">
+          {project.name}
+        </h3>
+        <p className="text-base text-text-secondary leading-relaxed mb-4">
+          {project.description}
+          {project.comingSoon && (
+            <em className="ml-2 text-text-secondary"> — coming soon</em>
+          )}
+        </p>
+        {project.stack.length > 0 && (
+          <p className="text-sm text-text-secondary mb-6">
+            {project.stack.join(", ")}
+          </p>
+        )}
+        {!project.comingSoon && (
+          <a
+            href={project.href}
+            className="text-sm font-medium text-accent underline underline-offset-4 decoration-accent hover:opacity-70 transition-opacity"
+          >
+            View Project →
+          </a>
+        )}
+      </motion.div>
+    </div>
   );
 }
 
@@ -97,22 +95,16 @@ export default function ProjectsSection() {
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-10%" }}
-          transition={{ type: "spring", stiffness: 260, damping: 20 }}
-          className="mb-12 text-3xl font-bold text-text-primary"
+          transition={{ duration: 0.7, ease: easeOutExpo }}
+          className="mb-4 font-playfair text-5xl font-bold text-text-primary"
         >
           Projects
         </motion.h2>
-        <motion.div
-          className="grid gap-6 md:grid-cols-3"
-          variants={cardContainer}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-10%" }}
-        >
-          {PROJECTS.map((project) => (
-            <ProjectCard key={project.name} project={project} />
+        <div>
+          {PROJECTS.map((project, i) => (
+            <ProjectRow key={project.name} project={project} index={i} />
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
   );
