@@ -1,8 +1,8 @@
 import Hero from "@/components/Hero";
 import LazyTerminalIntro from "@/components/LazyTerminalIntro";
+import ProjectsSection from "@/components/ProjectsSection";
 
 const SECTIONS = [
-  { id: "projects", label: "Projects" },
   { id: "about", label: "About" },
   { id: "resume", label: "Resume" },
   { id: "grades", label: "Grades" },
@@ -14,6 +14,7 @@ export default function Home() {
     <main>
       <LazyTerminalIntro />
       <Hero />
+      <ProjectsSection />
       {SECTIONS.map(({ id, label }) => (
         <section
           key={id}
