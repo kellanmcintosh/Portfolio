@@ -68,7 +68,7 @@ export default function Navbar() {
       <motion.nav
         className="fixed top-0 left-0 right-0 z-50 h-16"
         animate={{
-          backgroundColor: scrolled ? "rgba(250,248,243,0.88)" : "rgba(250,248,243,0)",
+          backgroundColor: scrolled ? "rgba(250,248,243,0.6)" : "rgba(250,248,243,0)",
           borderBottomColor: scrolled ? "rgba(180,165,140,0.4)" : "rgba(180,165,140,0)",
         }}
         style={{ borderBottomWidth: 1, borderBottomStyle: "solid" }}
