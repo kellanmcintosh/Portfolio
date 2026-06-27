@@ -8,6 +8,7 @@ type Project = {
   stack: string[];
   href: string;
   comingSoon: boolean;
+  category: string;
 };
 
 const PROJECTS: Project[] = [
@@ -17,6 +18,7 @@ const PROJECTS: Project[] = [
     stack: ["Python", "XGBoost", "scikit-learn", "pandas"],
     href: "#",
     comingSoon: true,
+    category: "Machine Learning",
   },
   {
     name: "MRI Tumor Detection",
@@ -24,6 +26,7 @@ const PROJECTS: Project[] = [
     stack: ["Python", "PyTorch", "CNN", "OpenCV"],
     href: "#",
     comingSoon: true,
+    category: "Computer Vision",
   },
   {
     name: "Next Project",
@@ -31,6 +34,7 @@ const PROJECTS: Project[] = [
     stack: [],
     href: "#",
     comingSoon: true,
+    category: "In Progress",
   },
 ];
 
@@ -46,11 +50,17 @@ function ProjectRow({ project, index }: { project: Project; index: number }) {
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true, margin: "-10%" }}
         transition={{ duration: 0.7, ease: easeOutExpo }}
-        className="md:w-2/5 md:shrink-0"
+        className="md:w-2/5 md:shrink-0 flex flex-col justify-between"
       >
         <span className="font-playfair text-7xl font-bold leading-none text-border select-none">
           {num}
         </span>
+        <div className="mt-4">
+          <div className="w-8 h-px bg-border mb-3" />
+          <span className="text-xs tracking-widest uppercase text-text-secondary">
+            {project.category}
+          </span>
+        </div>
       </motion.div>
 
       <motion.div
