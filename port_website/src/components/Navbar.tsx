@@ -68,8 +68,8 @@ export default function Navbar() {
       <motion.nav
         className="fixed top-0 left-0 right-0 z-50 h-16"
         animate={{
-          backgroundColor: scrolled ? "rgba(10,10,15,0.85)" : "rgba(10,10,15,0)",
-          borderBottomColor: scrolled ? "rgba(31,41,55,0.6)" : "rgba(31,41,55,0)",
+          backgroundColor: scrolled ? "rgba(250,248,243,0.88)" : "rgba(250,248,243,0)",
+          borderBottomColor: scrolled ? "rgba(180,165,140,0.4)" : "rgba(180,165,140,0)",
         }}
         style={{ borderBottomWidth: 1, borderBottomStyle: "solid" }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
@@ -86,7 +86,8 @@ export default function Navbar() {
           {/* KM monogram */}
           <button
             onClick={scrollToTop}
-            className="text-lg font-semibold tracking-widest text-text-primary hover:text-accent transition-colors duration-200"
+            className="text-lg font-bold text-text-primary hover:text-accent transition-colors duration-200"
+            style={{ fontFamily: "var(--font-playfair-display)" }}
             aria-label="Scroll to top"
           >
             KM
@@ -108,7 +109,6 @@ export default function Navbar() {
                     }`}
                   >
                     {label}
-                    {/* Cyan underline slide-in */}
                     <motion.span
                       className="absolute bottom-0 left-0 h-px bg-accent"
                       initial={{ scaleX: 0 }}
