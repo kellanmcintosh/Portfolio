@@ -15,14 +15,14 @@ export default function ResumeSection() {
           viewport={{ once: true, margin: "-10%" }}
           transition={spring}
         >
-          <h2 className="mb-4 text-3xl font-bold text-text-primary">Resume</h2>
+          <h2 className="mb-4 font-playfair text-5xl font-bold text-text-primary">Resume</h2>
           <p className="mb-10 text-text-secondary">
             Download my resume to learn more about my background and experience.
           </p>
           <a
             href="/resume.pdf"
             download
-            className="group inline-flex items-center gap-3 rounded-lg bg-accent px-8 py-4 text-base font-semibold text-background transition-all duration-200 hover:bg-accent/90 hover:shadow-[0_0_32px_rgba(0,217,255,0.35)]"
+            className="group inline-flex items-center gap-3 rounded-lg bg-accent px-8 py-4 text-base font-semibold text-background transition-all duration-200 hover:bg-accent/90"
           >
             <svg
               className="h-5 w-5 transition-transform duration-200 group-hover:translate-y-0.5"

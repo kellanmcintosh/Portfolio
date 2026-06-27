@@ -20,7 +20,7 @@ export default function GradesSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-10%" }}
           transition={spring}
-          className="mb-12 text-3xl font-bold text-text-primary"
+          className="mb-12 font-playfair text-5xl font-bold text-text-primary"
         >
           Grades
         </motion.h2>
