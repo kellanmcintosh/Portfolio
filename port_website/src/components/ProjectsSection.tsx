@@ -50,14 +50,11 @@ function ProjectRow({ project, index }: { project: Project; index: number }) {
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true, margin: "-10%" }}
         transition={{ duration: 0.7, ease: easeOutExpo }}
-        className="md:w-2/5 md:shrink-0 flex flex-col justify-between"
+        className="md:w-36 md:shrink-0 flex flex-col justify-between"
       >
-        <div className="flex items-center gap-4">
-          <span className="font-playfair text-7xl font-bold leading-none text-border select-none">
-            {num}
-          </span>
-          <div className="flex-1 h-px bg-border" />
-        </div>
+        <span className="font-playfair text-7xl font-bold leading-none text-border select-none">
+          {num}
+        </span>
         <div className="mt-4">
           <div className="w-8 h-px bg-border mb-3" />
           <span className="text-xs tracking-widest uppercase text-text-secondary">
