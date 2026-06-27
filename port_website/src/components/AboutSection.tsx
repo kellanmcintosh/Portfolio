@@ -17,6 +17,8 @@ const SKILLS = [
   { label: "Next.js", abbr: "NX" },
 ];
 
+const spring = { type: "spring", stiffness: 260, damping: 20 } as const;
+
 const skillContainer: Variants = {
   hidden: {},
   show: { transition: { staggerChildren: 0.07 } },
@@ -24,14 +26,22 @@ const skillContainer: Variants = {
 
 const skillItem: Variants = {
   hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
+  show: { opacity: 1, y: 0, transition: spring },
 };
 
 export default function AboutSection() {
   return (
     <section id="about" className="border-t border-border py-24">
       <div className="mx-auto max-w-6xl px-6">
-        <h2 className="mb-12 text-3xl font-bold text-text-primary">About</h2>
+        <motion.h2
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-10%" }}
+          transition={spring}
+          className="mb-12 text-3xl font-bold text-text-primary"
+        >
+          About
+        </motion.h2>
         <div className="grid gap-16 md:grid-cols-2">
           {/* Bio */}
           <motion.p
@@ -39,7 +49,7 @@ export default function AboutSection() {
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-10%" }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+            transition={spring}
           >
             {BIO}
           </motion.p>

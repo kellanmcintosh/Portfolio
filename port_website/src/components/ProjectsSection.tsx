@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 
 type Project = {
   name: string;
@@ -34,12 +34,26 @@ const PROJECTS: Project[] = [
   },
 ];
 
+const cardContainer: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+};
+
+const cardItem: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 260, damping: 20 },
+  },
+};
+
 function ProjectCard({ project }: { project: Project }) {
   return (
     <motion.a
       href={project.href}
-      whileHover={{ y: -6 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
+      variants={cardItem}
+      whileHover={{ y: -6, transition: { duration: 0.2 } }}
       className="group relative flex min-h-48 flex-col rounded-xl border border-border bg-surface p-6 transition-all duration-200 hover:border-accent hover:shadow-[0_0_28px_rgba(0,217,255,0.12)]"
     >
       {project.comingSoon && (
@@ -79,12 +93,26 @@ export default function ProjectsSection() {
   return (
     <section id="projects" className="border-t border-border py-24">
       <div className="mx-auto max-w-6xl px-6">
-        <h2 className="mb-12 text-3xl font-bold text-text-primary">Projects</h2>
-        <div className="grid gap-6 md:grid-cols-3">
+        <motion.h2
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-10%" }}
+          transition={{ type: "spring", stiffness: 260, damping: 20 }}
+          className="mb-12 text-3xl font-bold text-text-primary"
+        >
+          Projects
+        </motion.h2>
+        <motion.div
+          className="grid gap-6 md:grid-cols-3"
+          variants={cardContainer}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-10%" }}
+        >
           {PROJECTS.map((project) => (
             <ProjectCard key={project.name} project={project} />
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );
