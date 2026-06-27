@@ -1,4 +1,5 @@
 import Hero from "@/components/Hero";
+import LazyTerminalIntro from "@/components/LazyTerminalIntro";
 
 const SECTIONS = [
   { id: "projects", label: "Projects" },
@@ -11,6 +12,7 @@ const SECTIONS = [
 export default function Home() {
   return (
     <main>
+      <LazyTerminalIntro />
       <Hero />
       {SECTIONS.map(({ id, label }) => (
         <section
