@@ -83,14 +83,27 @@ export default function Navbar() {
         />
 
         <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-6">
-          {/* KM monogram */}
+          {/* Violin plot mark */}
           <button
             onClick={scrollToTop}
-            className="text-lg font-bold text-text-primary hover:text-accent transition-colors duration-200"
-            style={{ fontFamily: "var(--font-playfair-display)" }}
+            className="text-text-primary hover:text-accent transition-colors duration-200"
             aria-label="Scroll to top"
           >
-            KM
+            <svg
+              width="20"
+              height="36"
+              viewBox="0 0 20 36"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              {/* upper bulge narrower, lower bulge wider — authentic violin asymmetry */}
+              <path d="M 10 1 C 12.5 1, 16.5 5, 16.5 10 C 16.5 13.5, 13.5 15, 13.5 16.5 C 13.5 18, 18.5 21, 18.5 25.5 C 18.5 31, 13 35, 10 35 C 7 35, 1.5 31, 1.5 25.5 C 1.5 21, 6.5 18, 6.5 16.5 C 6.5 15, 3.5 13.5, 3.5 10 C 3.5 5, 7.5 1, 10 1 Z" />
+              <circle cx="10" cy="16.5" r="1.2" fill="currentColor" stroke="none" />
+            </svg>
           </button>
 
           {/* Desktop links */}
