@@ -1,78 +1,9 @@
 "use client";
 
-import { motion, type Variants } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 
-function DotGrid() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const SPACING = 32;
-    let raf: number;
-    let t = 0;
-
-    const resize = () => {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
-    };
-
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const cols = Math.ceil(canvas.width / SPACING) + 1;
-      const rows = Math.ceil(canvas.height / SPACING) + 1;
-      const cx = canvas.width / 2;
-      const cy = canvas.height / 2;
-
-      for (let c = 0; c < cols; c++) {
-        for (let r = 0; r < rows; r++) {
-          const x = c * SPACING;
-          const y = r * SPACING;
-          const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
-          const opacity = 0.05 + 0.07 * Math.sin(t * 0.4 - dist * 0.018);
-          ctx.beginPath();
-          ctx.arc(x, y, 1.5, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(0, 217, 255, ${Math.max(0, opacity)})`;
-          ctx.fill();
-        }
-      }
-
-      t += 0.016;
-      raf = requestAnimationFrame(draw);
-    };
-
-    resize();
-    draw();
-
-    window.addEventListener("resize", resize);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
-    };
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="absolute inset-0 h-full w-full pointer-events-none"
-    />
-  );
-}
-
-const container: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.15, delayChildren: 0.2 } },
-};
-
-const item: Variants = {
-  hidden: { opacity: 0, y: 24 },
-  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } },
-};
+const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
+const EASE_TEXT_WIPE = [0.22, 1, 0.36, 1] as const;
 
 export default function Hero() {
   const scrollToProjects = () => {
@@ -80,50 +11,60 @@ export default function Hero() {
   };
 
   return (
-    <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden">
-      <DotGrid />
-      <motion.div
-        className="relative z-10 flex flex-col items-center px-6 text-center"
-        variants={container}
-        initial="hidden"
-        animate="show"
+    <section className="relative flex min-h-screen flex-col justify-end overflow-hidden px-10 pb-[20vh] md:px-20">
+      {/* Name */}
+      <motion.h1
+        className="font-bold leading-none tracking-tight text-text-primary"
+        style={{
+          fontFamily: "var(--font-playfair-display)",
+          fontSize: "clamp(4.5rem, 11vw, 9rem)",
+        }}
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1, ease: EASE_OUT_EXPO }}
       >
-        <motion.h1
-          className="text-6xl font-bold tracking-tight text-text-primary md:text-8xl"
-          variants={item}
+        Kellan McIntosh
+      </motion.h1>
+
+      {/* Gold rule */}
+      <motion.div
+        className="mt-6 h-px bg-accent"
+        style={{ originX: 0 }}
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: 1 }}
+        transition={{ duration: 0.8, ease: EASE_OUT_EXPO, delay: 0.6 }}
+      />
+
+      {/* Subtitle */}
+      <motion.p
+        className="mt-4 text-sm uppercase tracking-[0.2em] text-text-secondary"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.9, ease: EASE_TEXT_WIPE, delay: 0.9 }}
+      >
+        Data Scientist &amp; ML Engineer
+      </motion.p>
+
+      {/* CTAs */}
+      <motion.div
+        className="mt-8 flex flex-wrap gap-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.9, ease: EASE_TEXT_WIPE, delay: 1.1 }}
+      >
+        <button
+          onClick={scrollToProjects}
+          className="border border-accent px-7 py-2.5 text-sm font-medium tracking-wide text-accent transition-colors hover:bg-accent hover:text-background"
         >
-          Kellan McIntosh
-        </motion.h1>
-        <motion.p
-          className="mt-4 text-xl font-medium text-accent md:text-2xl"
-          variants={item}
+          View Projects
+        </button>
+        <a
+          href="/resume.pdf"
+          download
+          className="border border-border px-7 py-2.5 text-sm font-medium tracking-wide text-text-secondary transition-colors hover:border-accent hover:text-accent"
         >
-          Data Science &amp; ML Engineer
-        </motion.p>
-        <motion.p
-          className="mt-3 text-base text-text-secondary md:text-lg"
-          variants={item}
-        >
-          Turning data into decisions.
-        </motion.p>
-        <motion.div
-          className="mt-10 flex flex-col gap-4 sm:flex-row"
-          variants={item}
-        >
-          <button
-            onClick={scrollToProjects}
-            className="rounded-lg bg-accent px-8 py-3 font-semibold text-background transition-colors hover:bg-accent/90"
-          >
-            View Projects
-          </button>
-          <a
-            href="/resume.pdf"
-            download
-            className="rounded-lg border border-border px-8 py-3 font-semibold text-text-primary transition-colors hover:border-accent hover:text-accent"
-          >
-            Download Resume
-          </a>
-        </motion.div>
+          Download Resume
+        </a>
       </motion.div>
     </section>
   );
