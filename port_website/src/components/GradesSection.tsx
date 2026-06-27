@@ -9,18 +9,28 @@ const COURSES = [
   { course: "Simulation Modeling", grade: "A" },
 ];
 
+const spring = { type: "spring", stiffness: 260, damping: 20 } as const;
+
 export default function GradesSection() {
   return (
     <section id="grades" className="border-t border-border py-24">
       <div className="mx-auto max-w-6xl px-6">
-        <h2 className="mb-12 text-3xl font-bold text-text-primary">Grades</h2>
+        <motion.h2
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-10%" }}
+          transition={spring}
+          className="mb-12 text-3xl font-bold text-text-primary"
+        >
+          Grades
+        </motion.h2>
         <div className="grid gap-16 md:grid-cols-2 md:items-center">
           {/* GPA callout */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-10%" }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+            transition={spring}
           >
             <p className="text-8xl font-bold leading-none text-accent md:text-[7rem]">
               4.0
@@ -38,7 +48,7 @@ export default function GradesSection() {
             initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: "-10%" }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+            transition={spring}
           >
             <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-text-secondary">
               Relevant Coursework

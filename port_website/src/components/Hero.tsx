@@ -71,7 +71,7 @@ const container: Variants = {
 
 const item: Variants = {
   hidden: { opacity: 0, y: 24 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } },
 };
 
 export default function Hero() {
@@ -117,7 +117,8 @@ export default function Hero() {
             View Projects
           </button>
           <a
-            href="#"
+            href="/resume.pdf"
+            download
             className="rounded-lg border border-border px-8 py-3 font-semibold text-text-primary transition-colors hover:border-accent hover:text-accent"
           >
             Download Resume

@@ -2,6 +2,8 @@
 
 import { motion } from "framer-motion";
 
+const spring = { type: "spring", stiffness: 260, damping: 20 } as const;
+
 export default function ResumeSection() {
   return (
     <section id="resume" className="border-t border-border py-24">
@@ -11,7 +13,7 @@ export default function ResumeSection() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-10%" }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
+          transition={spring}
         >
           <h2 className="mb-4 text-3xl font-bold text-text-primary">Resume</h2>
           <p className="mb-10 text-text-secondary">
@@ -30,6 +32,7 @@ export default function ResumeSection() {
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
             >
               <path d="M12 3v13" />
               <path d="m5 13 7 7 7-7" />
