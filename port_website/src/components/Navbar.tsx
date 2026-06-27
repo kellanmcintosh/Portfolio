@@ -68,7 +68,7 @@ export default function Navbar() {
       <motion.nav
         className="fixed top-0 left-0 right-0 z-50 h-16"
         animate={{
-          backgroundColor: scrolled ? "rgba(250,248,243,0.88)" : "rgba(250,248,243,0)",
+          backgroundColor: scrolled ? "rgba(250,248,243,0.6)" : "rgba(250,248,243,0)",
           borderBottomColor: scrolled ? "rgba(180,165,140,0.4)" : "rgba(180,165,140,0)",
         }}
         style={{ borderBottomWidth: 1, borderBottomStyle: "solid" }}
@@ -83,14 +83,13 @@ export default function Navbar() {
         />
 
         <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-6">
-          {/* KM monogram */}
+          {/* Portfolio wordmark */}
           <button
             onClick={scrollToTop}
-            className="text-lg font-bold text-text-primary hover:text-accent transition-colors duration-200"
-            style={{ fontFamily: "var(--font-playfair-display)" }}
+            className="text-xs font-medium tracking-[0.2em] uppercase text-text-secondary hover:text-accent transition-colors duration-200"
             aria-label="Scroll to top"
           >
-            KM
+            Portfolio
           </button>
 
           {/* Desktop links */}
