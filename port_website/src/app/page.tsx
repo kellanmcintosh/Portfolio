@@ -1,3 +1,6 @@
+import Hero from "@/components/Hero";
+import LazyTerminalIntro from "@/components/LazyTerminalIntro";
+
 const SECTIONS = [
   { id: "projects", label: "Projects" },
   { id: "about", label: "About" },
@@ -9,17 +12,8 @@ const SECTIONS = [
 export default function Home() {
   return (
     <main>
-      {/* Hero */}
-      <section className="flex min-h-screen flex-col items-center justify-center">
-        <h1 className="text-5xl font-semibold tracking-tight text-text-primary">
-          Kellan McIntosh
-        </h1>
-        <p className="mt-4 text-lg text-text-secondary">
-          Data science &amp; ML portfolio
-        </p>
-      </section>
-
-      {/* Stub sections */}
+      <LazyTerminalIntro />
+      <Hero />
       {SECTIONS.map(({ id, label }) => (
         <section
           key={id}
