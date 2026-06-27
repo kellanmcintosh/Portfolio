@@ -2,7 +2,10 @@
 
 import { motion } from "framer-motion";
 
-const BIO = `I'm Kellan McIntosh, a Data Science and Machine Learning Engineering student at the University of Massachusetts Amherst. Originally from South Africa, I came to UMass to build expertise at the intersection of statistics, systems, and intelligent software. My goal is to work as an AI/ML Engineer or Data Scientist — building models that move beyond notebooks and into production. I care about work that's rigorous, interpretable, and actually ships.`;
+const BIO = [
+  `I grew up in South Africa, where understanding people came before understanding systems — and that instinct has never left me. Whether it was navigating different communities, working across cultures, or just being curious about why people make the decisions they do, I've always been drawn to the human side of things. That orientation is what eventually led me to data: not as an end in itself, but as a way of making sense of the world and building things that matter to real people.`,
+  `Now at UMass Amherst studying Data Science and ML Engineering, I'm building the technical depth to match that curiosity. My goal is to work as an AI/ML Engineer — designing and deploying models that are well-engineered end to end, from experimentation to cloud-hosted production systems managed through proper CI/CD pipelines. I care about the full arc, not just the model.`,
+];
 
 const SKILLS = [
   "Python",
@@ -11,8 +14,10 @@ const SKILLS = [
   "scikit-learn",
   "pandas / NumPy",
   "SQL",
+  "Docker",
+  "AWS",
+  "CI/CD",
   "Git",
-  "Jupyter / Colab",
   "Statistics & Probability",
   "Next.js",
 ];
@@ -33,32 +38,25 @@ export default function AboutSection() {
           <span className="text-accent">—</span> About
         </motion.h2>
 
-        <motion.p
-          className="mb-8 text-lg leading-relaxed text-text-primary"
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-10%" }}
-          transition={{ duration: 0.7, ease: easeOutExpo, delay: 0.1 }}
-        >
-          {BIO}
-        </motion.p>
+        {BIO.map((para, i) => (
+          <motion.p
+            key={i}
+            className="mb-6 text-lg leading-relaxed text-text-primary"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-10%" }}
+            transition={{ duration: 0.7, ease: easeOutExpo, delay: 0.1 + i * 0.08 }}
+          >
+            {para}
+          </motion.p>
+        ))}
 
         <motion.p
-          className="mb-10 font-playfair text-xl italic text-text-secondary"
+          className="mt-4 text-sm tracking-wide uppercase text-text-secondary"
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-10%" }}
           transition={{ duration: 0.7, ease: easeOutExpo, delay: 0.2 }}
-        >
-          &ldquo;Building models that actually ship.&rdquo;
-        </motion.p>
-
-        <motion.p
-          className="text-sm tracking-wide uppercase text-text-secondary"
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-10%" }}
-          transition={{ duration: 0.7, ease: easeOutExpo, delay: 0.3 }}
         >
           {SKILLS.join(", ")}
         </motion.p>
