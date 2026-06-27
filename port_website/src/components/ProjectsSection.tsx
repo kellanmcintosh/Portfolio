@@ -52,9 +52,12 @@ function ProjectRow({ project, index }: { project: Project; index: number }) {
         transition={{ duration: 0.7, ease: easeOutExpo }}
         className="md:w-2/5 md:shrink-0 flex flex-col justify-between"
       >
-        <span className="font-playfair text-7xl font-bold leading-none text-border select-none">
-          {num}
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="font-playfair text-7xl font-bold leading-none text-border select-none">
+            {num}
+          </span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
         <div className="mt-4">
           <div className="w-8 h-px bg-border mb-3" />
           <span className="text-xs tracking-widest uppercase text-text-secondary">
