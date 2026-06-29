@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    @keyframes drawCurve {
+      from { stroke-dashoffset: 5000; }
+      to   { stroke-dashoffset: 0; }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(36px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes expandFromLeft {
+      from { transform: scaleX(0); }
+      to   { transform: scaleX(1); }
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.1); }
+      to   { opacity: 0.75; transform: scale(1); }
+    }
+  </style>
+</helmet>
+
+<section style="position:relative; width:100%; min-height:100vh; background:#FAF8F3; overflow:hidden; display:flex; flex-direction:column;">
+
+  <!-- Navbar -->
+  <nav style="position:relative; z-index:10; display:flex; align-items:center; justify-content:space-between; padding:28px 80px; flex-shrink:0;">
+    <span style="font-family:'Playfair Display',Georgia,serif; font-size:20px; font-weight:700; color:#1A1A1A; letter-spacing:0.1em;">KM</span>
+    <div style="display:flex; gap:44px; align-items:center;">
+      <a style="font-size:11px; color:#5C5A54; letter-spacing:0.18em; text-transform:uppercase; text-decoration:none; cursor:pointer;">Projects</a>
+      <a style="font-size:11px; color:#5C5A54; letter-spacing:0.18em; text-transform:uppercase; text-decoration:none; cursor:pointer;">About</a>
+      <a style="font-size:11px; color:#5C5A54; letter-spacing:0.18em; text-transform:uppercase; text-decoration:none; cursor:pointer;">Resume</a>
+      <a style="font-size:11px; color:#5C5A54; letter-spacing:0.18em; text-transform:uppercase; text-decoration:none; cursor:pointer;">Grades</a>
+    </div>
+    <a style="font-size:11px; color:#B8860B; border:1px solid rgba(184,134,11,0.65); padding:9px 22px; letter-spacing:0.16em; text-transform:uppercase; text-decoration:none; cursor:pointer;">Contact</a>
+  </nav>
+
+  <!-- Faint statistics grid -->
+  <div style="position:absolute; inset:0; z-index:0; pointer-events:none; background-image:linear-gradient(rgba(108,100,86,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(108,100,86,0.07) 1px, transparent 1px); background-size:64px 64px;"></div>
+
+  <!-- Gaussian — BACK layer (z:1, rendered behind text) -->
+  <svg style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; pointer-events:none;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="kmFill" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#B8860B" stopOpacity="0.11"/>
+        <stop offset="100%" stopColor="#B8860B" stopOpacity="0.01"/>
+      </linearGradient>
+      <filter id="kmGlow" x="-5%" y="-80%" width="110%" height="260%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="kmPeak" x="-400%" y="-400%" width="900%" height="900%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="b1"/>
+        <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="b2"/>
+        <feMerge><feMergeNode in="b1"/><feMergeNode in="b2"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+
+    <!-- Soft fill under the curve -->
+    <path d="{{ gaussianFill }}" fill="url(#kmFill)" style="animation:fadeIn 0.8s ease 0.3s both;"/>
+
+    <!-- Gaussian stroke — back (thinner, softer) -->
+    <path d="{{ gaussianStroke }}" fill="none" stroke="#B8860B" strokeWidth="1.6" strokeDasharray="{{ pathLen }}" filter="url(#kmGlow)" style="animation:drawCurve 2.5s cubic-bezier(0.16,1,0.3,1) 0.1s both;"/>
+
+    <!-- Baseline -->
+    <line x1="0" y1="{{ baseline }}" x2="{{ w }}" y2="{{ baseline }}" stroke="#B8860B" strokeWidth="0.5" opacity="0.11"/>
+
+    <!-- ±1σ dashed verticals -->
+    <line x1="{{ s1L }}" y1="{{ s1Y }}" x2="{{ s1L }}" y2="{{ baseline }}" stroke="#B8860B" strokeWidth="0.75" strokeDasharray="4,5" opacity="0.26"/>
+    <line x1="{{ s1R }}" y1="{{ s1Y }}" x2="{{ s1R }}" y2="{{ baseline }}" stroke="#B8860B" strokeWidth="0.75" strokeDasharray="4,5" opacity="0.26"/>
+
+    <!-- ±2σ dashed verticals -->
+    <line x1="{{ s2L }}" y1="{{ s2Y }}" x2="{{ s2L }}" y2="{{ baseline }}" stroke="#B8860B" strokeWidth="0.5" strokeDasharray="3,7" opacity="0.13"/>
+    <line x1="{{ s2R }}" y1="{{ s2Y }}" x2="{{ s2R }}" y2="{{ baseline }}" stroke="#B8860B" strokeWidth="0.5" strokeDasharray="3,7" opacity="0.13"/>
+
+    <!-- ±1σ horizontal connector -->
+    <line x1="{{ s1L }}" y1="{{ s1Y }}" x2="{{ s1R }}" y2="{{ s1Y }}" stroke="#B8860B" strokeWidth="0.5" strokeDasharray="5,7" opacity="0.11"/>
+
+    <!-- Baseline tick marks -->
+    <line x1="{{ mu }}"  y1="{{ btY1 }}" x2="{{ mu }}"  y2="{{ btY2 }}" stroke="#B8860B" strokeWidth="1.5" opacity="0.40"/>
+    <line x1="{{ s1L }}" y1="{{ btY1 }}" x2="{{ s1L }}" y2="{{ btY2 }}" stroke="#B8860B" strokeWidth="1.0" opacity="0.24"/>
+    <line x1="{{ s1R }}" y1="{{ btY1 }}" x2="{{ s1R }}" y2="{{ btY2 }}" stroke="#B8860B" strokeWidth="1.0" opacity="0.24"/>
+    <line x1="{{ s2L }}" y1="{{ btY1 }}" x2="{{ s2L }}" y2="{{ btY2 }}" stroke="#B8860B" strokeWidth="0.7" opacity="0.14"/>
+    <line x1="{{ s2R }}" y1="{{ btY1 }}" x2="{{ s2R }}" y2="{{ btY2 }}" stroke="#B8860B" strokeWidth="0.7" opacity="0.14"/>
+
+    <!-- Statistical labels -->
+    <text x="{{ mu }}"  y="{{ amuY }}" textAnchor="middle" style="font-family:'Courier New',monospace; font-size:13px; fill:#B8860B; opacity:0.44;">μ</text>
+    <text x="{{ s1L }}" y="{{ asY }}"  textAnchor="middle" style="font-family:'Courier New',monospace; font-size:10px; fill:#B8860B; opacity:0.28;">−σ</text>
+    <text x="{{ s1R }}" y="{{ asY }}"  textAnchor="middle" style="font-family:'Courier New',monospace; font-size:10px; fill:#B8860B; opacity:0.28;">+σ</text>
+    <text x="{{ s2L }}" y="{{ as2Y }}" textAnchor="middle" style="font-family:'Courier New',monospace; font-size:8.5px; fill:#B8860B; opacity:0.17;">−2σ</text>
+    <text x="{{ s2R }}" y="{{ as2Y }}" textAnchor="middle" style="font-family:'Courier New',monospace; font-size:8.5px; fill:#B8860B; opacity:0.17;">+2σ</text>
+
+    <!-- Chart legend watermark -->
+    <text x="{{ noteX }}" y="{{ noteY }}" textAnchor="end" style="font-family:'Courier New',monospace; font-size:11px; fill:#B8860B; opacity:0.13; letter-spacing:0.06em;">~ N(μ, σ²)</text>
+
+    <!-- Glowing peak dot -->
+    <circle cx="{{ mu }}" cy="{{ peakY }}" r="3.5" fill="#B8860B" filter="url(#kmPeak)" style="transform-box:fill-box; transform-origin:center; animation:popIn 0.7s cubic-bezier(0.34,1.56,0.64,1) 2.5s both;"/>
+
+    <!-- Scatter data points -->
+    <circle cx="{{ p1x }}" cy="{{ p1y }}" r="2.0" fill="#B8860B" opacity="0.19" style="animation:fadeIn 0.6s ease 2.5s both;"/>
+    <circle cx="{{ p2x }}" cy="{{ p2y }}" r="1.5" fill="#B8860B" opacity="0.15" style="animation:fadeIn 0.6s ease 2.65s both;"/>
+    <circle cx="{{ p3x }}" cy="{{ p3y }}" r="2.0" fill="#B8860B" opacity="0.18" style="animation:fadeIn 0.6s ease 2.80s both;"/>
+    <circle cx="{{ p4x }}" cy="{{ p4y }}" r="1.5" fill="#B8860B" opacity="0.21" style="animation:fadeIn 0.6s ease 2.60s both;"/>
+    <circle cx="{{ p5x }}" cy="{{ p5y }}" r="2.0" fill="#B8860B" opacity="0.17" style="animation:fadeIn 0.6s ease 2.75s both;"/>
+    <circle cx="{{ p6x }}" cy="{{ p6y }}" r="1.5" fill="#B8860B" opacity="0.15" style="animation:fadeIn 0.6s ease 2.55s both;"/>
+    <circle cx="{{ p7x }}" cy="{{ p7y }}" r="2.0" fill="#B8860B" opacity="0.19" style="animation:fadeIn 0.6s ease 2.85s both;"/>
+    <circle cx="{{ p8x }}" cy="{{ p8y }}" r="1.5" fill="#B8860B" opacity="0.16" style="animation:fadeIn 0.6s ease 2.70s both;"/>
+  </svg>
+
+  <!-- Text content — sits at z:2 between the two curve layers -->
+  <div style="position:relative; z-index:2; display:flex; flex-direction:column; justify-content:flex-end; flex:1; padding:0 80px 20vh 80px;">
+    <h1 style="font-family:'Playfair Display',Georgia,serif; font-size:clamp(4.5rem,11vw,9rem); font-weight:900; line-height:0.95; letter-spacing:-0.02em; color:#1A1A1A; margin:0; animation:fadeUp 1.1s cubic-bezier(0.16,1,0.3,1) 0.25s both;">
+      Kellan McIntosh
+    </h1>
+    <div style="margin-top:24px; height:1px; background:#B8860B; transform-origin:left; animation:expandFromLeft 0.85s cubic-bezier(0.16,1,0.3,1) 0.85s both;"></div>
+    <p style="margin-top:16px; font-size:11.5px; letter-spacing:0.22em; text-transform:uppercase; color:#5C5A54; margin-bottom:0; animation:fadeIn 0.8s ease 1.15s both;">
+      Data Scientist &amp; ML Engineer
+    </p>
+    <div style="margin-top:32px; display:flex; gap:16px; flex-wrap:wrap; animation:fadeIn 0.8s ease 1.4s both;">
+      <button style="border:1px solid #B8860B; padding:10px 28px; font-size:11.5px; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:#B8860B; background:transparent; cursor:pointer; font-family:inherit;">
+        View Projects
+      </button>
+      <a style="display:inline-block; border:1px solid #D9D2C5; padding:10px 28px; font-size:11.5px; font-weight:500; letter-spacing:0.14em; text-transform:uppercase; color:#5C5A54; text-decoration:none; cursor:pointer;">
+        Download Resume
+      </a>
+    </div>
+  </div>
+
+  <!-- Gaussian — FRONT layer (z:3, weaves in front of text via clipPath) -->
+  <svg style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:3; pointer-events:none;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- Clip to the strips where curve appears IN FRONT of letters -->
+      <clipPath id="kmWeave">
+        <rect x="{{ ws0x }}" y="0" width="{{ ws0w }}" height="{{ h }}"/>
+        <rect x="{{ ws1x }}" y="0" width="{{ ws1w }}" height="{{ h }}"/>
+        <rect x="{{ ws2x }}" y="0" width="{{ ws2w }}" height="{{ h }}"/>
+        <rect x="{{ ws3x }}" y="0" width="{{ ws3w }}" height="{{ h }}"/>
+      </clipPath>
+      <filter id="kmFrontGlow" x="-5%" y="-80%" width="110%" height="260%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <!-- Same path, thicker + more glow, clipped to weave strips -->
+    <path d="{{ gaussianStroke }}" fill="none" stroke="#B8860B" strokeWidth="2.5" strokeDasharray="{{ pathLen }}" clipPath="url(#kmWeave)" filter="url(#kmFrontGlow)" style="animation:drawCurve 2.5s cubic-bezier(0.16,1,0.3,1) 0.1s both;"/>
+  </svg>
+
+  <!-- Gold inner-glow border (matches existing site) -->
+  <div style="position:absolute; inset:0; pointer-events:none; z-index:9; box-shadow:inset 0 0 0 1.5px rgba(184,134,11,0.55), inset 0 0 80px rgba(184,134,11,0.22);"></div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 1440, &quot;height&quot;: 900 }
+}">
+class Component extends DCLogic {
+  state = { w: 1440, h: 900 };
+
+  componentDidMount() {
+    this._onResize = () => this.setState({ w: window.innerWidth, h: window.innerHeight });
+    this._onResize();
+    window.addEventListener('resize', this._onResize);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('resize', this._onResize);
+  }
+
+  _gY(x, mu, sig, amp, bl) {
+    return bl - amp * Math.exp(-(x - mu) * (x - mu) / (2 * sig * sig));
+  }
+
+  renderVals() {
+    const { w, h } = this.state;
+    const mu  = w * 0.50;
+    const sig = w * 0.18;
+    const amp = h * 0.31;
+    const bl  = h * 0.81;
+    const gY  = (x) => this._gY(x, mu, sig, amp, bl);
+
+    // 601 evenly-spaced points across the full width
+    const N = 600;
+    const pts = Array.from({ length: N + 1 }, (_, i) => {
+      const x = (i / N) * w;
+      return x.toFixed(1) + ',' + gY(x).toFixed(1);
+    });
+
+    const strokeD = 'M ' + pts.join(' L ');
+    const fillD   = 'M 0,' + bl.toFixed(1) + ' L ' + pts.join(' L ') +
+                    ' L ' + w.toFixed(1) + ',' + bl.toFixed(1) + ' Z';
+
+    // Approximate arc length for stroke-dasharray
+    const coords = pts.map(p => p.split(',').map(Number));
+    let pathLen = 0;
+    for (let i = 1; i < coords.length; i++) {
+      const dx = coords[i][0] - coords[i-1][0];
+      const dy = coords[i][1] - coords[i-1][1];
+      pathLen += Math.sqrt(dx * dx + dy * dy);
+    }
+    pathLen = Math.ceil(pathLen) + 200;
+
+    // Key curve coordinates
+    const peakY = bl - amp;
+    const s1L   = mu - sig,                   s1R = mu + sig;
+    const s1Y   = gY(s1L);
+    const s2L   = Math.max(0, mu - 2 * sig),  s2R = Math.min(w, mu + 2 * sig);
+    const s2Y   = gY(s2L);
+
+    // Baseline tick y-positions
+    const btY1 = bl + 4;
+    const btY2 = bl + 11;
+
+    // Scatter data points (deterministic, offset from curve)
+    const sc = [
+      [0.10, -38], [0.20,  42], [0.32, -30],
+      [0.43,  36], [0.58, -24], [0.70,  28],
+      [0.80, -28], [0.90,  20],
+    ].map(([rx, oy]) => {
+      const x = rx * w;
+      return { x: x.toFixed(1), y: (gY(x) + oy).toFixed(1) };
+    });
+
+    // Weave clip strips — x-ranges where the curve appears IN FRONT of the letters.
+    // Calibrated to approximate letter positions in "Kellan McIntosh" at ~11vw font.
+    //   Strip 0: covers "K" → part of "e"
+    //   Strip 1: covers end of "n" in Kellan
+    //   Strip 2: covers "t" → "o" in McIntosh
+    //   Strip 3: covers "h" + tail
+    const ws = [
+      [w * 0.055, w * 0.125],
+      [w * 0.250, w * 0.055],
+      [w * 0.775, w * 0.085],
+      [w * 0.882, w * 0.118],
+    ];
+
+    return {
+      w, h,
+      gaussianStroke: strokeD,
+      gaussianFill:   fillD,
+      pathLen,
+      mu:       mu.toFixed(1),
+      baseline: bl.toFixed(1),
+      peakY:    peakY.toFixed(1),
+      s1L:  s1L.toFixed(1),  s1R:  s1R.toFixed(1),  s1Y:  s1Y.toFixed(1),
+      s2L:  s2L.toFixed(1),  s2R:  s2R.toFixed(1),  s2Y:  s2Y.toFixed(1),
+      btY1: btY1.toFixed(1), btY2: btY2.toFixed(1),
+      amuY: (peakY - 18).toFixed(1),
+      asY:  (s1Y   - 13).toFixed(1),
+      as2Y: (s2Y   - 11).toFixed(1),
+      p1x: sc[0].x, p1y: sc[0].y,
+      p2x: sc[1].x, p2y: sc[1].y,
+      p3x: sc[2].x, p3y: sc[2].y,
+      p4x: sc[3].x, p4y: sc[3].y,
+      p5x: sc[4].x, p5y: sc[4].y,
+      p6x: sc[5].x, p6y: sc[5].y,
+      p7x: sc[6].x, p7y: sc[6].y,
+      p8x: sc[7].x, p8y: sc[7].y,
+      ws0x: ws[0][0].toFixed(1), ws0w: ws[0][1].toFixed(1),
+      ws1x: ws[1][0].toFixed(1), ws1w: ws[1][1].toFixed(1),
+      ws2x: ws[2][0].toFixed(1), ws2w: ws[2][1].toFixed(1),
+      ws3x: ws[3][0].toFixed(1), ws3w: ws[3][1].toFixed(1),
+      noteX: (w - 28).toFixed(1),
+      noteY: (h - 28).toFixed(1),
+    };
+  }
+}
+</script>
+</body>
+</html>
